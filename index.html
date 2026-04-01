@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>測試帳密總覽</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161a22;
+    --surface2: #1e2330;
+    --border: #2a3045;
+    --accent-green: #00e5a0;
+    --accent-blue: #4d9fff;
+    --accent-orange: #ff8c42;
+    --text-primary: #e8ecf4;
+    --text-secondary: #8a93aa;
+    --text-dim: #4a5268;
+    --pay-highlight: #ffe066;
+    --pay-glow: rgba(255, 224, 102, 0.15);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text-primary);
+    font-family: 'Noto Sans TC', sans-serif;
+    min-height: 100vh;
+    padding: 16px;
+    padding-bottom: 40px;
+  }
+
+  header {
+    text-align: center;
+    padding: 24px 0 20px;
+    margin-bottom: 20px;
+  }
+
+  header h1 {
+    font-size: 18px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+  }
+
+  header p {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 6px;
+    letter-spacing: 0.05em;
+  }
+
+  .divider {
+    width: 40px;
+    height: 2px;
+    background: var(--border);
+    margin: 10px auto 0;
+    border-radius: 1px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .card-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    flex-shrink: 0;
+  }
+
+  .icon-green { background: rgba(0, 229, 160, 0.12); }
+  .icon-blue  { background: rgba(77, 159, 255, 0.12); }
+  .icon-orange{ background: rgba(255, 140, 66, 0.12); }
+
+  .card-title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .title-green  { color: var(--accent-green); }
+  .title-blue   { color: var(--accent-blue); }
+  .title-orange { color: var(--accent-orange); }
+
+  /* Rows */
+  .rows { padding: 4px 0 8px; }
+
+  .row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 9px 16px;
+    border-bottom: 1px solid rgba(42, 48, 69, 0.5);
+    gap: 8px;
+  }
+
+  .row:last-child { border-bottom: none; }
+
+  .row-label {
+    font-size: 12px;
+    color: var(--text-secondary);
+    flex-shrink: 0;
+    min-width: 90px;
+    letter-spacing: 0.03em;
+  }
+
+  .row-value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    color: var(--text-primary);
+    text-align: right;
+    word-break: break-all;
+    letter-spacing: 0.05em;
+  }
+
+  /* PAY密碼高亮 */
+  .pay-row {
+    background: var(--pay-glow);
+    border-radius: 10px;
+    margin: 4px 10px;
+    padding: 12px 14px !important;
+    border: 1px solid rgba(255, 224, 102, 0.25) !important;
+    position: relative;
+  }
+
+  .pay-row .row-label {
+    color: var(--pay-highlight);
+    font-weight: 700;
+    font-size: 12px;
+  }
+
+  .pay-row .row-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--pay-highlight);
+    letter-spacing: 0.18em;
+  }
+
+  .pay-badge {
+    position: absolute;
+    top: -1px;
+    right: 12px;
+    background: var(--pay-highlight);
+    color: #1a1200;
+    font-size: 9px;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 0 0 6px 6px;
+    letter-spacing: 0.08em;
+  }
+
+  /* URL row */
+  .url-value {
+    font-size: 10px;
+    color: var(--accent-blue);
+    text-align: right;
+    word-break: break-all;
+    font-family: 'JetBrains Mono', monospace;
+    letter-spacing: 0;
+  }
+
+  /* Note row */
+  .note-row {
+    padding: 8px 16px;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .note-text {
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.03em;
+    line-height: 1.6;
+  }
+
+  /* Multi-account */
+  .multi-account {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+
+  .account-chip {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+
+  footer {
+    text-align: center;
+    padding-top: 24px;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: 0.05em;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>測試帳密總覽</h1>
+  <p>TEST CREDENTIALS · INTERNAL USE ONLY</p>
+  <div class="divider"></div>
+</header>
+
+<!-- 街口支付 -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon icon-green">💳</div>
+    <span class="card-title title-green">街口支付</span>
+  </div>
+  <div class="rows">
+    <div class="row">
+      <span class="row-label">電話號碼</span>
+      <span class="row-value">0922-837-056</span>
+    </div>
+    <div class="row">
+      <span class="row-label">街口帳號</span>
+      <span class="row-value">901160736</span>
+    </div>
+    <div class="row">
+      <span class="row-label">身份證號</span>
+      <span class="row-value">K122837056</span>
+    </div>
+    <div class="row">
+      <span class="row-label">驗證碼</span>
+      <span class="row-value">837056</span>
+    </div>
+  </div>
+  <!-- 付款密碼高亮 -->
+  <div class="row pay-row">
+    <span class="pay-badge">付款密碼</span>
+    <span class="row-label">付款密碼</span>
+    <span class="row-value">111111</span>
+  </div>
+  <div style="height:8px"></div>
+</div>
+
+<!-- 台新PAY -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon icon-blue">🏦</div>
+    <span class="card-title title-blue">台新 PAY</span>
+  </div>
+  <div class="rows">
+    <div class="row">
+      <span class="row-label">身分證號碼</span>
+      <span class="row-value">N223 550 570</span>
+    </div>
+    <div class="row" style="border-bottom:none">
+      <span class="row-label" style="font-size:10px;color:var(--text-dim)">(POSTEAM)</span>
+      <span></span>
+    </div>
+    <div class="row">
+      <span class="row-label">使用者代號</span>
+      <span class="row-value">test12</span>
+    </div>
+    <div class="row">
+      <span class="row-label">登入密碼</span>
+      <span class="row-value">abab12</span>
+    </div>
+    <div class="row">
+      <span class="row-label">裝置綁定碼</span>
+      <span class="row-value">000000</span>
+    </div>
+    <div class="row">
+      <span class="row-label">OTP 密碼</span>
+      <span class="row-value">123456</span>
+    </div>
+    <div class="row note-row" style="border-top: 1px solid var(--border)">
+      <span class="note-text">🔗 APP下載：wallet-t.taishinbank.com.tw</span>
+    </div>
+  </div>
+  <!-- 付款密碼高亮 -->
+  <div class="row pay-row">
+    <span class="pay-badge">付款密碼</span>
+    <span class="row-label">付款密碼</span>
+    <span class="row-value">112233</span>
+  </div>
+  <div style="height:8px"></div>
+</div>
+
+<!-- GLNPAY -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-icon icon-orange">🌐</div>
+    <span class="card-title title-orange">GLN PAY</span>
+  </div>
+  <div class="rows">
+    <div class="row">
+      <span class="row-label">網址</span>
+      <span class="url-value">test-pvt.glnpay.com:11443</span>
+    </div>
+    <div class="row" style="align-items:flex-start">
+      <span class="row-label">帳號</span>
+      <div class="multi-account">
+        <span class="account-chip">tsobtw01</span>
+        <span class="account-chip">tsobtw02</span>
+        <span class="account-chip">tsobtw03</span>
+      </div>
+    </div>
+    <div class="row">
+      <span class="row-label">密碼</span>
+      <span class="row-value">qqwwee11</span>
+    </div>
+    <div class="row">
+      <span class="row-label">國家選擇</span>
+      <span class="row-value">Taiwan</span>
+    </div>
+    <div class="row note-row" style="border-top: 1px solid var(--border)">
+      <span class="note-text">⌨️ 密碼需使用畫面上的鍵盤輸入</span>
+    </div>
+  </div>
+  <!-- 支付密碼高亮 -->
+  <div class="row pay-row">
+    <span class="pay-badge">支付密碼</span>
+    <span class="row-label">支付密碼</span>
+    <span class="row-value">111222</span>
+  </div>
+  <div style="height:8px"></div>
+</div>
+
+<footer>⚠️ 僅供內部測試使用，請勿對外分享</footer>
+
+</body>
+</html>
