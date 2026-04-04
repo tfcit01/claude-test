@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TEST ENV DASHBOARD</title>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 :root {
   --bg:       #080b10;
@@ -640,27 +639,23 @@ a{color:var(--cyan);font-size:11px}
   </div><!-- /main -->
 </div><!-- /layout -->
 
-<!-- MODAL for Excel gen -->
+<!-- MODAL for print -->
 <div class="modal-bg" id="modal-bg" onclick="closeModal(event)">
   <div class="modal">
-    <div class="modal-title">// GENERATE EXCEL</div>
+    <div class="modal-title">// 生成測試清單</div>
     <div class="form-grid">
       <div class="f-group form-full">
-        <label class="f-label">任務名稱（用於檔名）</label>
+        <label class="f-label">任務名稱</label>
         <input class="f-input" id="m-taskname" readonly />
       </div>
-      <div class="f-group">
-        <label class="f-label">年月（YYYYMM）</label>
-        <input class="f-input" id="m-ym" maxlength="6" placeholder="202604" />
-      </div>
-      <div class="f-group">
-        <label class="f-label">預覽檔名</label>
-        <div class="f-input" id="m-preview" style="color:var(--green);font-size:11px;background:#0a1a0f"></div>
+      <div class="f-group form-full">
+        <label class="f-label">產出日期</label>
+        <input class="f-input" id="m-date" readonly />
       </div>
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModalDirect()">取消</button>
-      <button class="btn btn-excel" onclick="doExport()">⬇ 下載 Excel</button>
+      <button class="btn btn-excel" onclick="doExport()">🖨 開啟列印清單</button>
     </div>
   </div>
 </div>
@@ -822,7 +817,7 @@ function render(){
           <div class="ss-opt ${t.status==='done'?'active-done':''}" onclick="changeStatus(${t.id},'done')">已完成</div>
         </div>
         <div class="task-actions">
-          <button class="btn btn-excel" onclick="openModal(${t.id})">📊 生成測試清單 Excel</button>
+          <button class="btn btn-excel" onclick="openModal(${t.id})">📊 產生測試清單</button>
           <button class="btn btn-outline" style="color:var(--red);border-color:#ff475740" onclick="deleteTask(${t.id})">✕ 刪除</button>
         </div>
       </div>
@@ -840,20 +835,9 @@ function openModal(id){
   currentTaskId = id;
   const t = tasks.find(t=>t.id===id);
   document.getElementById('m-taskname').value = t.name;
-  // auto fill ym from start date or today
-  const ref = t.start ? t.start : new Date().toISOString().slice(0,10);
-  const ym = ref.replace(/-/g,'').slice(0,6);
-  document.getElementById('m-ym').value = ym;
-  updatePreview();
+  document.getElementById('m-date').value = new Date().toLocaleDateString('zh-TW');
   document.getElementById('modal-bg').classList.add('open');
 }
-
-function updatePreview(){
-  const ym = document.getElementById('m-ym').value;
-  const name = document.getElementById('m-taskname').value;
-  document.getElementById('m-preview').textContent = `${ym}_${name}_測試清單.xlsx`;
-}
-document.getElementById('m-ym').addEventListener('input', updatePreview);
 
 function closeModal(e){ if(e.target===document.getElementById('modal-bg')) closeModalDirect(); }
 function closeModalDirect(){ document.getElementById('modal-bg').classList.remove('open'); }
@@ -861,164 +845,344 @@ function closeModalDirect(){ document.getElementById('modal-bg').classList.remov
 function doExport(){
   const t = tasks.find(t=>t.id===currentTaskId);
   if(!t) return;
-  const ym = document.getElementById('m-ym').value || new Date().toISOString().slice(0,7).replace('-','');
-  const filename = `${ym}_${t.name}_測試清單.xlsx`;
+  const today = new Date().toLocaleDateString('zh-TW');
   const si = statusInfo(t.status);
-  const wb = XLSX.utils.book_new();
+  const systemName = t.system || '新支付';
+  const items = getVerifyItems(systemName);
 
-  // ══════════════════════════════════════
-  // Sheet 1 — 任務摘要 & 帳密
-  // ══════════════════════════════════════
-  const ws1 = XLSX.utils.aoa_to_sheet([]);
-  const s1rows = [
-    // [A, B, C, D, E]
-    [`${t.name} — 測試任務資訊`, '', '', '', ''],
-    ['任務名稱', t.name,            '產出日期', new Date().toLocaleDateString('zh-TW'), ''],
-    ['測試期間', (t.start||'—') + ' ～ ' + (t.end||'—'), '關聯系統', t.system||'—', ''],
-    ['測試人員', t.members.join('、')||'—', '配合窗口', t.contacts.join('、')||'—', ''],
-    ['狀態',    si.label,           '備註',     t.notes||'—', ''],
-    ['','','','',''],
-    // 台新PAY creds
-    ['【台新 PAY】帳密', '', '', '', ''],
-    ['欄位','帳密內容','說明','',''],
-    ['付款密碼①','121212','★ 最常用，優先使用','',''],
-    ['付款密碼②','112233','備用付款密碼','',''],
-    ['身分證號','N223 550 570','POSTEAM 測試帳號','',''],
-    ['使用者代號','test12','','',''],
-    ['登入密碼','abab12','','',''],
-    ['裝置綁定驗證碼','000000','','',''],
-    ['OTP 密碼','123456','','',''],
-    ['測試網址','wallet-t.taishinbank.com.tw','RichartLife_5.671.htm','',''],
-    ['','','','',''],
-    // 街口
-    ['【街口支付】帳密', '', '', '', ''],
-    ['欄位','帳密內容','說明','',''],
-    ['付款密碼','111111','★ 支付時使用','',''],
-    ['電話號碼','0922-837-056','','',''],
-    ['街口帳號','901160736','','',''],
-    ['身分證號','K122837056','','',''],
-    ['驗證碼','837056','','',''],
-    ['','','','',''],
-    // GLN
-    ['【GLNPAY】帳密', '', '', '', ''],
-    ['欄位','帳密內容','說明','',''],
-    ['支付密碼','111222','★ 支付時使用','',''],
-    ['帳號①','tsobtw01','','',''],
-    ['帳號②','tsobtw02','','',''],
-    ['帳號③','tsobtw03','','',''],
-    ['登入密碼','qqwwee11','需使用畫面上的虛擬鍵盤','',''],
-    ['國家選擇','Taiwan','下拉選單選取','',''],
-    ['測試網址','test-pvt.glnpay.com:11443','','',''],
-    ['','','','',''],
-    // 台灣Pay
-    ['【台灣 Pay】帳密', '', '', '', ''],
-    ['欄位','帳密內容','說明','',''],
-    ['測試帳號','Taipei101','','',''],
-    ['測試密碼','16095410','','',''],
-    ['','','','',''],
-    ['★ 黃底欄位為付款密碼，交易測試時請優先確認','','','',''],
-  ];
-  XLSX.utils.sheet_add_aoa(ws1, s1rows, {origin:'A1'});
-  ws1['!cols'] = [{wch:20},{wch:28},{wch:26},{wch:18},{wch:10}];
-  // merges: title row, section titles, note
-  ws1['!merges'] = [
-    {s:{r:0,c:0},e:{r:0,c:4}},
-    {s:{r:6,c:0},e:{r:6,c:4}},
-    {s:{r:17,c:0},e:{r:17,c:4}},
-    {s:{r:25,c:0},e:{r:25,c:4}},
-    {s:{r:33,c:0},e:{r:33,c:4}},
-    {s:{r:s1rows.length-1,c:0},e:{r:s1rows.length-1,c:4}},
-  ];
-  XLSX.utils.book_append_sheet(wb, ws1, '任務摘要＆帳密');
+  // build table rows HTML
+  const rowsHtml = items.map((item, i) => {
+    const isRefund = item.label.startsWith('當日退') || item.label.startsWith('隔日退');
+    const isCustom = item.isCustom;
+    const labelHtml = item.label.replace(/新支付/g, `<strong>${systemName}</strong>`);
+    const posVal = item.pos !== undefined ? item.pos : '';
+    const mposVal = item.mpos !== undefined ? item.mpos : '';
+    const tposVal = item.tpos !== undefined ? item.tpos : '';
+    const kposVal = item.kpos !== undefined ? item.kpos : '';
+    const noBack = posVal === '無後台';
+    const isDash = v => v === '-';
+    const cellClass = v => v === '無後台' ? 'no-back' : (v === '-' ? 'dash' : '');
+    return `<tr class="${isCustom?'row-custom':isRefund?'row-refund':'row-sale'}">
+      <td class="td-no">${isCustom?'':i+1}</td>
+      <td class="td-item">${isCustom?'<span class="custom-label">其他測試案例（可自行新增）</span>':labelHtml}${item.note?`<span class="item-note">${item.note}</span>`:''}</td>
+      <td class="${cellClass(posVal)}">${posVal}</td>
+      <td class="${cellClass(mposVal)}">${mposVal}</td>
+      <td class="${cellClass(tposVal)}">${tposVal}</td>
+      <td class="${cellClass(kposVal)}">${kposVal}</td>
+      <td class="td-result"></td>
+      <td class="td-tester"></td>
+      <td class="td-note"></td>
+    </tr>`;
+  }).join('');
 
-  // ══════════════════════════════════════
-  // Sheet 2 — 驗證清單（圖片範本格式）
-  // ══════════════════════════════════════
-  const ws2 = XLSX.utils.aoa_to_sheet([]);
-  const posItems = getVerifyItems(t.system);
+  const html = `<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>${t.name} 測試清單</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans TC',sans-serif;background:#f0f4f8;color:#1a2332;font-size:12px}
 
-  // Row 0: big title
-  const titleRow = [`${t.name} 測試驗證清單　　日期：${new Date().toLocaleDateString('zh-TW')}　　測試人員：${t.members.join('、')||'—'}`, '', '', '', '', '', '', ''];
-  // Row 1: column headers
-  const hdrRow = ['驗證項目 / 機台', '商場POS', 'MPOS', '票務人工POS', '紀念品POS', '結果判定', '測試人員', '備註'];
-  const dataRows = posItems.map(item => [
-    item.label,
-    item.pos  !== undefined ? item.pos  : '',
-    item.mpos !== undefined ? item.mpos : '',
-    item.tpos !== undefined ? item.tpos : '',
-    item.kpos !== undefined ? item.kpos : '',
-    '',
-    '',
-    item.note || '',
-  ]);
-  // extra custom rows
-  const customRows = [
-    ['其他測試案例（可自行新增）','','','','','','',''],
-    ['其他測試案例（可自行新增）','','','','','','',''],
-    ['其他測試案例（可自行新增）','','','','','','',''],
-  ];
-  const legendRow  = ['【結果判定】  ○ Pass　✕ Fail　△ 部分通過　N/A 不適用','','','','','','',''];
-  const payRow     = ['【付款密碼速查】台新PAY：121212 / 112233　街口：111111　GLNPAY：111222　台灣Pay帳號：Taipei101 / 16095410','','','','','','',''];
-
-  const allRows = [titleRow, hdrRow, ...dataRows, ...customRows, [], legendRow, payRow];
-  XLSX.utils.sheet_add_aoa(ws2, allRows, {origin:'A1'});
-  ws2['!cols'] = [{wch:42},{wch:13},{wch:11},{wch:14},{wch:13},{wch:12},{wch:14},{wch:22}];
-
-  // merges for title + legend + payRow + custom rows
-  const totalDataRows = dataRows.length + customRows.length;
-  ws2['!merges'] = [
-    {s:{r:0,c:0},e:{r:0,c:7}},  // title
-    {s:{r:2+totalDataRows+1,c:0},e:{r:2+totalDataRows+1,c:7}}, // legend
-    {s:{r:2+totalDataRows+2,c:0},e:{r:2+totalDataRows+2,c:7}}, // pay row
-  ];
-  XLSX.utils.book_append_sheet(wb, ws2, '測試驗證清單');
-
-  // ══════════════════════════════════════
-  // Sheet 3 — 人員分工
-  // ══════════════════════════════════════
-  const ws3 = XLSX.utils.aoa_to_sheet([]);
-  const memberList = t.members.length ? t.members : ['—'];
-  XLSX.utils.sheet_add_aoa(ws3, [
-    ['測試人員分工表','','',''],
-    ['測試人員','負責測試項目','完成 / 總數','備註'],
-    ...memberList.map(m=>[m,'','','']),
-  ], {origin:'A1'});
-  ws3['!cols'] = [{wch:14},{wch:38},{wch:14},{wch:22}];
-  ws3['!merges'] = [{s:{r:0,c:0},e:{r:0,c:3}}];
-  XLSX.utils.book_append_sheet(wb, ws3, '人員分工');
-
-  XLSX.writeFile(wb, filename);
-  showToast('✓ Excel 已下載：' + filename);
-  closeModalDirect();
+@media print{
+  body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .no-print{display:none!important}
+  .page{box-shadow:none;margin:0;border-radius:0;padding:14mm 12mm}
+  @page{size:A4 portrait;margin:0}
 }
 
-// 驗證項目範本（對應圖片的驗證項目 × 機台矩陣）
+.no-print{
+  position:fixed;top:16px;right:16px;z-index:99;
+  display:flex;gap:8px;
+}
+.btn-print{
+  background:#0d47a1;color:#fff;border:none;
+  padding:10px 22px;border-radius:6px;font-size:13px;font-weight:700;
+  cursor:pointer;font-family:'Noto Sans TC',sans-serif;
+  box-shadow:0 2px 12px #0d47a150;
+}
+.btn-print:hover{background:#1565c0}
+.btn-close{
+  background:#fff;color:#333;border:1px solid #ccc;
+  padding:10px 18px;border-radius:6px;font-size:13px;font-weight:500;
+  cursor:pointer;font-family:'Noto Sans TC',sans-serif;
+}
+
+.page{
+  max-width:210mm;margin:20px auto;background:#fff;
+  box-shadow:0 4px 32px #00000018;border-radius:8px;
+  padding:16mm 14mm 14mm;
+}
+
+/* ── header ── */
+.report-header{
+  display:flex;align-items:stretch;gap:0;
+  border:2px solid #0d47a1;border-radius:6px;
+  overflow:hidden;margin-bottom:14px;
+}
+.header-accent{
+  width:8px;background:linear-gradient(180deg,#0d47a1 0%,#1976d2 50%,#42a5f5 100%);
+  flex-shrink:0;
+}
+.header-body{flex:1;padding:12px 16px}
+.report-title{
+  font-size:20px;font-weight:900;color:#0d47a1;
+  letter-spacing:.03em;line-height:1.2;margin-bottom:6px;
+}
+.report-title span{
+  display:inline-block;
+  background:#0d47a1;color:#fff;
+  font-size:11px;font-weight:700;
+  padding:2px 8px;border-radius:3px;
+  vertical-align:middle;margin-left:10px;letter-spacing:.08em;
+}
+.header-meta{display:flex;flex-wrap:wrap;gap:6px 20px;margin-top:8px}
+.meta-item{display:flex;align-items:center;gap:5px;font-size:11px}
+.meta-label{
+  background:#e3f2fd;color:#0d47a1;
+  font-weight:700;padding:1px 7px;border-radius:3px;
+  font-size:10px;letter-spacing:.05em;white-space:nowrap;
+}
+.meta-value{color:#333;font-weight:500}
+
+/* ── creds strip ── */
+.creds-strip{
+  display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;
+}
+.cred-pill{
+  flex:1;min-width:140px;
+  border-radius:6px;overflow:hidden;
+  border:1px solid #e0e0e0;
+}
+.cred-pill-head{
+  padding:5px 10px;font-size:10px;font-weight:700;
+  letter-spacing:.06em;color:#fff;
+}
+.cred-pill-body{padding:7px 10px;background:#fafafa}
+.cred-row{display:flex;justify-content:space-between;align-items:baseline;padding:2px 0;border-bottom:1px dashed #ebebeb}
+.cred-row:last-child{border-bottom:none}
+.cred-key{font-size:9px;color:#666;letter-spacing:.04em}
+.cred-val{font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:700;color:#1a2332}
+.cred-val.pay{font-size:15px;color:#b71c1c;background:#fff9c4;padding:0 4px;border-radius:2px}
+
+/* ── table ── */
+.table-wrap{border-radius:6px;overflow:hidden;border:1.5px solid #1565c0}
+table{width:100%;border-collapse:collapse}
+
+thead tr{background:linear-gradient(135deg,#0d47a1 0%,#1565c0 100%)}
+thead th{
+  color:#fff;font-weight:700;font-size:10px;
+  padding:8px 6px;text-align:center;letter-spacing:.05em;
+  border-right:1px solid #1976d2;
+}
+thead th:last-child{border-right:none}
+thead th.th-item{text-align:left;padding-left:10px}
+
+.col-no{width:26px}
+.col-item{width:auto}
+.col-pos{width:54px}
+.col-result{width:44px}
+.col-tester{width:54px}
+.col-note{width:70px}
+
+tbody tr{border-bottom:1px solid #e8edf4}
+tbody tr:last-child{border-bottom:none}
+
+tbody td{padding:6px 6px;text-align:center;font-size:11px;vertical-align:middle}
+tbody td.td-no{color:#94a3b8;font-family:'JetBrains Mono',monospace;font-size:10px}
+tbody td.td-item{text-align:left;padding-left:10px;line-height:1.5}
+tbody td.td-result{background:#fffde7}
+tbody td.td-tester{background:#f3f9ff}
+tbody td.td-note{background:#fafafa}
+
+.row-sale{background:#fff}
+.row-sale:nth-child(even){background:#f7faff}
+.row-refund{background:#fff8f8}
+.row-custom{background:#fffde7}
+
+td.no-back{background:#ffebee;color:#c62828;font-weight:700;font-size:10px}
+td.dash{background:#f5f5f5;color:#bbb}
+
+.item-note{
+  display:block;font-size:9px;color:#e65100;
+  background:#fff3e0;border-radius:2px;padding:1px 5px;
+  margin-top:2px;width:fit-content;
+}
+.custom-label{color:#b45309;font-style:italic}
+
+/* ── type indicators ── */
+.row-sale td.td-item::before{
+  content:'銷';display:inline-block;
+  background:#1565c0;color:#fff;font-size:8px;font-weight:700;
+  padding:1px 4px;border-radius:2px;margin-right:6px;vertical-align:middle;
+}
+.row-refund td.td-item::before{
+  content:'退';display:inline-block;
+  background:#c62828;color:#fff;font-size:8px;font-weight:700;
+  padding:1px 4px;border-radius:2px;margin-right:6px;vertical-align:middle;
+}
+.row-custom td.td-item::before{content:none}
+
+/* ── footer ── */
+.report-footer{
+  margin-top:12px;display:flex;justify-content:space-between;align-items:flex-end;
+  padding-top:8px;border-top:1px solid #e0e8f0;
+}
+.legend{display:flex;gap:12px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:#555}
+.legend-dot{
+  width:14px;height:14px;border-radius:3px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;
+}
+.doc-id{font-family:'JetBrains Mono',monospace;font-size:9px;color:#94a3b8}
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <button class="btn-close" onclick="window.close()">✕ 關閉</button>
+  <button class="btn-print" onclick="window.print()">🖨 列印 / 儲存 PDF</button>
+</div>
+
+<div class="page">
+
+  <!-- header -->
+  <div class="report-header">
+    <div class="header-accent"></div>
+    <div class="header-body">
+      <div class="report-title">${t.name} 測試清單 <span>TEST CHECKLIST</span></div>
+      <div class="header-meta">
+        <div class="meta-item"><span class="meta-label">日期</span><span class="meta-value">${today}</span></div>
+        <div class="meta-item"><span class="meta-label">系統</span><span class="meta-value">${t.system||'—'}</span></div>
+        <div class="meta-item"><span class="meta-label">期間</span><span class="meta-value">${t.start||'—'} ～ ${t.end||'—'}</span></div>
+        <div class="meta-item"><span class="meta-label">測試人員</span><span class="meta-value">${t.members.join('、')||'—'}</span></div>
+        <div class="meta-item"><span class="meta-label">配合窗口</span><span class="meta-value">${t.contacts.join('、')||'—'}</span></div>
+        <div class="meta-item"><span class="meta-label">狀態</span><span class="meta-value">${si.label}</span></div>
+        ${t.notes?`<div class="meta-item"><span class="meta-label">備註</span><span class="meta-value">${t.notes}</span></div>`:''}
+      </div>
+    </div>
+  </div>
+
+  <!-- creds strip -->
+  <div class="creds-strip">
+    <div class="cred-pill">
+      <div class="cred-pill-head" style="background:#1565c0">台新 PAY</div>
+      <div class="cred-pill-body">
+        <div class="cred-row"><span class="cred-key">付款密碼①</span><span class="cred-val pay">121212</span></div>
+        <div class="cred-row"><span class="cred-key">付款密碼②</span><span class="cred-val pay">112233</span></div>
+        <div class="cred-row"><span class="cred-key">使用者代號</span><span class="cred-val">test12</span></div>
+        <div class="cred-row"><span class="cred-key">登入密碼</span><span class="cred-val">abab12</span></div>
+      </div>
+    </div>
+    <div class="cred-pill">
+      <div class="cred-pill-head" style="background:#b71c1c">街口支付</div>
+      <div class="cred-pill-body">
+        <div class="cred-row"><span class="cred-key">付款密碼</span><span class="cred-val pay">111111</span></div>
+        <div class="cred-row"><span class="cred-key">電話</span><span class="cred-val">0922-837-056</span></div>
+        <div class="cred-row"><span class="cred-key">街口帳號</span><span class="cred-val">901160736</span></div>
+        <div class="cred-row"><span class="cred-key">驗證碼</span><span class="cred-val">837056</span></div>
+      </div>
+    </div>
+    <div class="cred-pill">
+      <div class="cred-pill-head" style="background:#1b5e20">GLNPAY</div>
+      <div class="cred-pill-body">
+        <div class="cred-row"><span class="cred-key">支付密碼</span><span class="cred-val pay">111222</span></div>
+        <div class="cred-row"><span class="cred-key">帳號</span><span class="cred-val">tsobtw01–03</span></div>
+        <div class="cred-row"><span class="cred-key">登入密碼</span><span class="cred-val">qqwwee11</span></div>
+        <div class="cred-row"><span class="cred-key">國家</span><span class="cred-val">Taiwan</span></div>
+      </div>
+    </div>
+    <div class="cred-pill">
+      <div class="cred-pill-head" style="background:#e65100">台灣 Pay</div>
+      <div class="cred-pill-body">
+        <div class="cred-row"><span class="cred-key">測試帳號</span><span class="cred-val">Taipei101</span></div>
+        <div class="cred-row"><span class="cred-key">測試密碼</span><span class="cred-val">16095410</span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- checklist table -->
+  <div class="table-wrap">
+    <table>
+      <colgroup>
+        <col class="col-no"><col class="col-item">
+        <col class="col-pos"><col class="col-pos"><col class="col-pos"><col class="col-pos">
+        <col class="col-result"><col class="col-tester"><col class="col-note">
+      </colgroup>
+      <thead>
+        <tr>
+          <th class="col-no">#</th>
+          <th class="th-item">驗證項目 / 機台</th>
+          <th>商場POS</th><th>MPOS</th><th>票務人工POS</th><th>紀念品POS</th>
+          <th>結果</th><th>測試人員</th><th>備註</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rowsHtml}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- footer -->
+  <div class="report-footer">
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#e8f5e9;color:#2e7d32;border:1px solid #a5d6a7">○</div> Pass</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ffebee;color:#c62828;border:1px solid #ef9a9a">✕</div> Fail</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fff8e1;color:#f57f17;border:1px solid #ffe082">△</div> 部分通過</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f5f5f5;color:#9e9e9e;border:1px solid #e0e0e0">—</div> 跳過 / N/A</div>
+      <div class="legend-item" style="margin-left:8px;padding-left:8px;border-left:1px solid #ddd">
+        <div class="legend-dot" style="background:#1565c0;color:#fff;font-size:7px">銷</div> 銷售項目
+      </div>
+      <div class="legend-item">
+        <div class="legend-dot" style="background:#c62828;color:#fff;font-size:7px">退</div> 退款項目
+      </div>
+    </div>
+    <div class="doc-id">產出：${today} · TEST ENV INTERNAL</div>
+  </div>
+
+</div>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+  closeModalDirect();
+  showToast('✓ 列印清單已開啟');
+}
+
+// 驗證項目範本
 function getVerifyItems(system) {
-  // label, pos, mpos, tpos, kpos, note
-  // undefined = 空白可填；特定字串 = 固定值
+  const s = system || '新支付';
   const base = [
-    {label:'銷售：新支付 100元'},
-    {label:'當日退：新支付 100元'},
-    {label:'銷售：新支付 10+現金50'},
-    {label:'當日退：新支付 10+現金50'},
-    {label:'銷售：新支付 10+LINEPAY 50'},
-    {label:'當日退：新支付 10+ LINEPAY 50'},
-    {label:'銷售：新支付 50元+電子禮券 50元'},
-    {label:'當日退：新支付 50元+電子禮券 50元'},
-    {label:'銷售：新支付 50元+電子禮券 50元（需人工後台退款）',
+    {label:`銷售：新支付 100元`},
+    {label:`當日退：新支付 100元`},
+    {label:`銷售：新支付 10+現金50`},
+    {label:`當日退：新支付 10+現金50`},
+    {label:`銷售：新支付 10+LINEPAY 50`},
+    {label:`當日退：新支付 10+ LINEPAY 50`},
+    {label:`銷售：新支付 50元+電子禮券 50元`},
+    {label:`當日退：新支付 50元+電子禮券 50元`},
+    {label:`銷售：新支付 50元+電子禮券 50元（需人工後台退款）`,
       pos:'無後台', mpos:'-', tpos:'-', kpos:'-', note:'需人工後台操作'},
-    {label:'銷售：新支付 50+點數100點(25元)'},
-    {label:'當日退：新支付 50+點數100點(25元)'},
-    {label:'銷售：新支付 1元'},
-    {label:'隔日退：新支付 1元'},
+    {label:`銷售：新支付 50+點數100點(25元)`},
+    {label:`當日退：新支付 50+點數100點(25元)`},
+    {label:`銷售：新支付 1元`},
+    {label:`隔日退：新支付 1元`},
+    {label:'', isCustom:true},
+    {label:'', isCustom:true},
+    {label:'', isCustom:true},
   ];
   if(system === 'GLNPAY') {
-    base.push({label:'虛擬鍵盤輸入密碼', note:'需使用畫面上鍵盤，不可直接鍵入'});
-    base.push({label:'國家選擇 Taiwan', note:'下拉選單確認顯示正確'});
+    base.splice(-3,0,{label:'虛擬鍵盤輸入密碼', note:'需使用畫面上鍵盤，不可直接鍵入'});
+    base.splice(-3,0,{label:'國家選擇 Taiwan', note:'下拉選單確認顯示正確'});
   }
   if(system === '台新PAY') {
-    base.push({label:'裝置綁定驗證 (000000)', note:'綁定完成後方可付款'});
-    base.push({label:'OTP 驗證 (123456)', note:''});
+    base.splice(-3,0,{label:'裝置綁定驗證 (000000)', note:'綁定完成後方可付款'});
+    base.splice(-3,0,{label:'OTP 驗證 (123456)', note:''});
   }
   return base;
 }
