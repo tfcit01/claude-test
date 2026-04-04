@@ -1066,42 +1066,52 @@ td.dash{background:#f5f5f5;color:#bbb}
     </div>
   </div>
 
-  <!-- creds strip -->
+  <!-- creds strip: only the matched system -->
   <div class="creds-strip">
-    <div class="cred-pill">
-      <div class="cred-pill-head" style="background:#1565c0">台新 PAY</div>
-      <div class="cred-pill-body">
-        <div class="cred-row"><span class="cred-key">付款密碼①</span><span class="cred-val pay">121212</span></div>
-        <div class="cred-row"><span class="cred-key">付款密碼②</span><span class="cred-val pay">112233</span></div>
-        <div class="cred-row"><span class="cred-key">使用者代號</span><span class="cred-val">test12</span></div>
-        <div class="cred-row"><span class="cred-key">登入密碼</span><span class="cred-val">abab12</span></div>
-      </div>
-    </div>
-    <div class="cred-pill">
-      <div class="cred-pill-head" style="background:#b71c1c">街口支付</div>
-      <div class="cred-pill-body">
-        <div class="cred-row"><span class="cred-key">付款密碼</span><span class="cred-val pay">111111</span></div>
-        <div class="cred-row"><span class="cred-key">電話</span><span class="cred-val">0922-837-056</span></div>
-        <div class="cred-row"><span class="cred-key">街口帳號</span><span class="cred-val">901160736</span></div>
-        <div class="cred-row"><span class="cred-key">驗證碼</span><span class="cred-val">837056</span></div>
-      </div>
-    </div>
-    <div class="cred-pill">
-      <div class="cred-pill-head" style="background:#1b5e20">GLNPAY</div>
-      <div class="cred-pill-body">
-        <div class="cred-row"><span class="cred-key">支付密碼</span><span class="cred-val pay">111222</span></div>
-        <div class="cred-row"><span class="cred-key">帳號</span><span class="cred-val">tsobtw01–03</span></div>
-        <div class="cred-row"><span class="cred-key">登入密碼</span><span class="cred-val">qqwwee11</span></div>
-        <div class="cred-row"><span class="cred-key">國家</span><span class="cred-val">Taiwan</span></div>
-      </div>
-    </div>
-    <div class="cred-pill">
-      <div class="cred-pill-head" style="background:#e65100">台灣 Pay</div>
-      <div class="cred-pill-body">
-        <div class="cred-row"><span class="cred-key">測試帳號</span><span class="cred-val">Taipei101</span></div>
-        <div class="cred-row"><span class="cred-key">測試密碼</span><span class="cred-val">16095410</span></div>
-      </div>
-    </div>
+    ${(()=>{
+      const credMap = {
+        '台新PAY': `<div class="cred-pill" style="max-width:260px">
+          <div class="cred-pill-head" style="background:#1565c0">台新 PAY</div>
+          <div class="cred-pill-body">
+            <div class="cred-row"><span class="cred-key">付款密碼①</span><span class="cred-val pay">121212</span></div>
+            <div class="cred-row"><span class="cred-key">付款密碼②</span><span class="cred-val pay">112233</span></div>
+            <div class="cred-row"><span class="cred-key">使用者代號</span><span class="cred-val">test12</span></div>
+            <div class="cred-row"><span class="cred-key">登入密碼</span><span class="cred-val">abab12</span></div>
+            <div class="cred-row"><span class="cred-key">身分證號</span><span class="cred-val">N223 550 570</span></div>
+            <div class="cred-row"><span class="cred-key">裝置驗證碼</span><span class="cred-val">000000</span></div>
+            <div class="cred-row"><span class="cred-key">OTP 密碼</span><span class="cred-val">123456</span></div>
+          </div>
+        </div>`,
+        '街口支付': `<div class="cred-pill" style="max-width:260px">
+          <div class="cred-pill-head" style="background:#b71c1c">街口支付</div>
+          <div class="cred-pill-body">
+            <div class="cred-row"><span class="cred-key">付款密碼</span><span class="cred-val pay">111111</span></div>
+            <div class="cred-row"><span class="cred-key">電話</span><span class="cred-val">0922-837-056</span></div>
+            <div class="cred-row"><span class="cred-key">街口帳號</span><span class="cred-val">901160736</span></div>
+            <div class="cred-row"><span class="cred-key">身分證號</span><span class="cred-val">K122837056</span></div>
+            <div class="cred-row"><span class="cred-key">驗證碼</span><span class="cred-val">837056</span></div>
+          </div>
+        </div>`,
+        'GLNPAY': `<div class="cred-pill" style="max-width:260px">
+          <div class="cred-pill-head" style="background:#1b5e20">GLNPAY</div>
+          <div class="cred-pill-body">
+            <div class="cred-row"><span class="cred-key">支付密碼</span><span class="cred-val pay">111222</span></div>
+            <div class="cred-row"><span class="cred-key">帳號</span><span class="cred-val">tsobtw01–03</span></div>
+            <div class="cred-row"><span class="cred-key">登入密碼</span><span class="cred-val">qqwwee11</span></div>
+            <div class="cred-row"><span class="cred-key">國家選擇</span><span class="cred-val">Taiwan</span></div>
+            <div class="cred-row"><span class="cred-key">網址</span><span class="cred-val" style="font-size:10px">test-pvt.glnpay.com</span></div>
+          </div>
+        </div>`,
+        '台灣Pay': `<div class="cred-pill" style="max-width:260px">
+          <div class="cred-pill-head" style="background:#e65100">台灣 Pay</div>
+          <div class="cred-pill-body">
+            <div class="cred-row"><span class="cred-key">測試帳號</span><span class="cred-val">Taipei101</span></div>
+            <div class="cred-row"><span class="cred-key">測試密碼</span><span class="cred-val">16095410</span></div>
+          </div>
+        </div>`,
+      };
+      return credMap[t.system] || `<div style="font-size:12px;color:#888;padding:8px">（無對應帳密資料）</div>`;
+    })()}
   </div>
 
   <!-- checklist table -->
