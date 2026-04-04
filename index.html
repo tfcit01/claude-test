@@ -2,350 +2,1040 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>測試帳密總覽</title>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TEST ENV DASHBOARD</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
-  :root {
-    --bg: #0d0f14;
-    --surface: #161a22;
-    --surface2: #1e2330;
-    --border: #2a3045;
-    --accent-green: #00e5a0;
-    --accent-blue: #4d9fff;
-    --accent-orange: #ff8c42;
-    --text-primary: #e8ecf4;
-    --text-secondary: #8a93aa;
-    --text-dim: #4a5268;
-    --pay-highlight: #ffe066;
-    --pay-glow: rgba(255, 224, 102, 0.15);
-  }
+:root {
+  --bg:       #080b10;
+  --panel:    #0d1117;
+  --card:     #111827;
+  --border:   #1e2d3d;
+  --border2:  #243447;
+  --cyan:     #00d4ff;
+  --green:    #00e676;
+  --amber:    #ffc107;
+  --red:      #ff4757;
+  --purple:   #bb86fc;
+  --text:     #cdd9e5;
+  --muted:    #526070;
+  --label:    #7b8fa0;
+  --mono:     'JetBrains Mono', monospace;
+  --sans:     'Noto Sans TC', sans-serif;
+  --r:        8px;
+}
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
+*{box-sizing:border-box;margin:0;padding:0}
 
-  body {
-    background: var(--bg);
-    color: var(--text-primary);
-    font-family: 'Noto Sans TC', sans-serif;
-    min-height: 100vh;
-    padding: 16px;
-    padding-bottom: 40px;
-  }
+html,body{
+  min-height:100%;
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  font-size:14px;
+}
 
-  header {
-    text-align: center;
-    padding: 24px 0 20px;
-    margin-bottom: 20px;
-  }
+/* ── scanline overlay ── */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background:repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent 2px,
+    rgba(0,212,255,.015) 2px,
+    rgba(0,212,255,.015) 4px
+  );
+  pointer-events:none;z-index:9999;
+}
 
-  header h1 {
-    font-size: 18px;
-    font-weight: 700;
-    letter-spacing: 0.15em;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-  }
+/* ── top bar ── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:12px 20px;
+  background:var(--panel);
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:100;
+}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.logo{
+  font-family:var(--mono);font-size:13px;font-weight:700;
+  color:var(--cyan);letter-spacing:.15em;
+}
+.logo span{color:var(--muted);font-weight:300}
+.env-badge{
+  font-family:var(--mono);font-size:10px;
+  background:#00d4ff18;border:1px solid #00d4ff40;
+  color:var(--cyan);padding:3px 9px;border-radius:3px;letter-spacing:.1em;
+}
+.topbar-right{
+  font-family:var(--mono);font-size:11px;color:var(--muted);
+  display:flex;align-items:center;gap:6px;
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);
+  box-shadow:0 0 6px var(--green);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
 
-  header p {
-    font-size: 12px;
-    color: var(--text-dim);
-    margin-top: 6px;
-    letter-spacing: 0.05em;
-  }
+/* ── layout ── */
+.layout{display:grid;grid-template-columns:1fr;gap:0}
+@media(min-width:960px){
+  .layout{grid-template-columns:340px 1fr}
+}
 
-  .divider {
-    width: 40px;
-    height: 2px;
-    background: var(--border);
-    margin: 10px auto 0;
-    border-radius: 1px;
-  }
+/* ── sidebar / tabs ── */
+.sidebar{
+  border-right:1px solid var(--border);
+  min-height:calc(100vh - 49px);
+}
 
-  /* Card */
-  .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 16px;
-    margin-bottom: 16px;
-    overflow: hidden;
-  }
+.tab-nav{
+  display:flex;
+  border-bottom:1px solid var(--border);
+}
+.tab-btn{
+  flex:1;padding:12px 8px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.08em;
+  background:transparent;border:none;cursor:pointer;
+  color:var(--muted);border-bottom:2px solid transparent;
+  transition:.2s;
+}
+.tab-btn.active{color:var(--cyan);border-bottom-color:var(--cyan)}
 
-  .card-header {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 14px 16px;
-    border-bottom: 1px solid var(--border);
-  }
+/* ── credentials panel ── */
+.creds-panel{padding:16px}
 
-  .card-icon {
-    width: 36px;
-    height: 36px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    flex-shrink: 0;
-  }
+.cred-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--r);
+  margin-bottom:12px;
+  overflow:hidden;
+}
+.cred-head{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;
+  border-bottom:1px solid var(--border);
+}
+.cred-ico{
+  width:28px;height:28px;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:12px;font-weight:700;flex-shrink:0;
+}
+.cred-head h3{font-size:13px;font-weight:700;letter-spacing:.05em}
+.cred-body{padding:4px 0}
 
-  .icon-green { background: rgba(0, 229, 160, 0.12); }
-  .icon-blue  { background: rgba(77, 159, 255, 0.12); }
-  .icon-orange{ background: rgba(255, 140, 66, 0.12); }
+.cr{
+  display:flex;align-items:baseline;
+  padding:6px 14px;border-bottom:1px solid #151f2a;
+}
+.cr:last-child{border-bottom:none}
+.cr-lbl{
+  font-family:var(--mono);font-size:10px;color:var(--label);
+  min-width:80px;flex-shrink:0;letter-spacing:.04em;
+}
+.cr-val{font-family:var(--mono);font-size:13px}
 
-  .card-title {
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-  }
+.cr.pay{
+  border-left:3px solid var(--cyan);
+  background:#00d4ff08;
+  padding:9px 14px;
+}
+.cr.pay .cr-lbl{color:var(--cyan)}
+.cr.pay .cr-val{
+  font-size:20px;font-weight:700;color:#fff;letter-spacing:.2em;
+}
+.pay-tag{
+  font-size:9px;font-family:var(--mono);font-weight:700;
+  background:var(--cyan);color:#000;
+  padding:1px 5px;border-radius:2px;margin-left:8px;vertical-align:middle;
+}
 
-  .title-green  { color: var(--accent-green); }
-  .title-blue   { color: var(--accent-blue); }
-  .title-orange { color: var(--accent-orange); }
+/* per-card accent */
+.jko .cred-ico{background:#ff475720;color:#ff4757}
+.jko .cred-head h3{color:#ff7070}
+.jko .cr.pay{border-left-color:#ff4757;background:#ff47570a}
+.jko .cr.pay .cr-lbl{color:#ff4757}
+.jko .cr.pay .pay-tag{background:#ff4757}
 
-  /* Rows */
-  .rows { padding: 4px 0 8px; }
+.tsn .cred-ico{background:#7b8fff20;color:#7b8fff}
+.tsn .cred-head h3{color:#7b8fff}
+.tsn .cr.pay{border-left-color:#7b8fff;background:#7b8fff0a}
+.tsn .cr.pay .cr-lbl{color:#7b8fff}
+.tsn .cr.pay .pay-tag{background:#7b8fff;color:#fff}
 
-  .row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 9px 16px;
-    border-bottom: 1px solid rgba(42, 48, 69, 0.5);
-    gap: 8px;
-  }
+.gln .cred-ico{background:#00e67620;color:#00e676}
+.gln .cred-head h3{color:#00e676}
 
-  .row:last-child { border-bottom: none; }
+.twp .cred-ico{background:#ff930020;color:#ff9300}
+.twp .cred-head h3{color:#ff9300}
 
-  .row-label {
-    font-size: 12px;
-    color: var(--text-secondary);
-    flex-shrink: 0;
-    min-width: 90px;
-    letter-spacing: 0.03em;
-  }
+.accs{padding:4px 0}
+.acc-row{
+  display:flex;align-items:center;gap:8px;
+  padding:5px 14px;border-bottom:1px dashed #151f2a;
+}
+.acc-row:last-child{border-bottom:none}
+.acc-n{font-family:var(--mono);font-size:10px;color:var(--muted);width:16px}
+.acc-id{font-family:var(--mono);font-size:13px;color:var(--green)}
 
-  .row-value {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 14px;
-    color: var(--text-primary);
-    text-align: right;
-    word-break: break-all;
-    letter-spacing: 0.05em;
-  }
+.cred-note{
+  font-size:10px;font-family:var(--mono);
+  padding:7px 14px;border-top:1px solid var(--border);
+  color:var(--amber);line-height:1.6;
+}
 
-  /* PAY密碼高亮 */
-  .pay-row {
-    background: var(--pay-glow);
-    border-radius: 10px;
-    margin: 4px 10px;
-    padding: 12px 14px !important;
-    border: 1px solid rgba(255, 224, 102, 0.25) !important;
-    position: relative;
-  }
+/* ── main content ── */
+.main{padding:20px}
 
-  .pay-row .row-label {
-    color: var(--pay-highlight);
-    font-weight: 700;
-    font-size: 12px;
-  }
+/* section header */
+.sec-hd{
+  display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:14px;
+}
+.sec-title{
+  font-family:var(--mono);font-size:11px;font-weight:600;
+  color:var(--cyan);letter-spacing:.15em;text-transform:uppercase;
+}
+.sec-line{flex:1;height:1px;background:var(--border);margin-left:12px}
 
-  .pay-row .row-value {
-    font-size: 22px;
-    font-weight: 700;
-    color: var(--pay-highlight);
-    letter-spacing: 0.18em;
-  }
+/* stats row */
+.stats{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.stat-box{
+  flex:1;min-width:80px;
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:12px 14px;
+}
+.stat-num{font-family:var(--mono);font-size:22px;font-weight:700;line-height:1}
+.stat-lbl{font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.05em}
+.c-cyan{color:var(--cyan)}
+.c-green{color:var(--green)}
+.c-amber{color:var(--amber)}
+.c-red{color:var(--red)}
 
-  .pay-badge {
-    position: absolute;
-    top: -1px;
-    right: 12px;
-    background: var(--pay-highlight);
-    color: #1a1200;
-    font-size: 9px;
-    font-weight: 700;
-    padding: 2px 6px;
-    border-radius: 0 0 6px 6px;
-    letter-spacing: 0.08em;
-  }
+/* task form */
+.task-form{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);padding:16px;margin-bottom:20px;
+}
+.form-title{
+  font-family:var(--mono);font-size:10px;color:var(--cyan);
+  letter-spacing:.12em;margin-bottom:14px;
+}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.form-full{grid-column:1/-1}
 
-  /* URL row */
-  .url-value {
-    font-size: 10px;
-    color: var(--accent-blue);
-    text-align: right;
-    word-break: break-all;
-    font-family: 'JetBrains Mono', monospace;
-    letter-spacing: 0;
-  }
+.f-group{display:flex;flex-direction:column;gap:5px}
+.f-label{font-family:var(--mono);font-size:10px;color:var(--label);letter-spacing:.06em}
 
-  /* Note row */
-  .note-row {
-    padding: 8px 16px;
-    background: rgba(255,255,255,0.02);
-  }
+.f-input,.f-select{
+  background:#0a0f18;border:1px solid var(--border2);
+  border-radius:5px;padding:7px 10px;
+  color:var(--text);font-family:var(--mono);font-size:12px;
+  outline:none;transition:.2s;width:100%;
+}
+.f-input:focus,.f-select:focus{border-color:var(--cyan);box-shadow:0 0 0 2px #00d4ff18}
+.f-select option{background:#0d1117}
 
-  .note-text {
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.03em;
-    line-height: 1.6;
-  }
+.members-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.member-chip{
+  display:flex;align-items:center;gap:5px;
+  background:#0a0f18;border:1px solid var(--border2);
+  border-radius:20px;padding:4px 10px;
+  font-family:var(--mono);font-size:11px;cursor:pointer;
+  transition:.2s;user-select:none;
+}
+.member-chip:hover{border-color:var(--cyan);color:var(--cyan)}
+.member-chip.active{
+  background:#00d4ff18;border-color:var(--cyan);color:var(--cyan);
+}
+.member-chip .dot2{
+  width:6px;height:6px;border-radius:50%;
+  background:var(--muted);flex-shrink:0;transition:.2s;
+}
+.member-chip.active .dot2{background:var(--cyan)}
 
-  /* Multi-account */
-  .multi-account {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-    justify-content: flex-end;
-  }
+.contacts-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.contact-chip{
+  display:flex;align-items:center;gap:4px;
+  background:#0a0f18;border:1px solid var(--border2);
+  border-radius:5px;padding:4px 10px;
+  font-family:var(--mono);font-size:11px;cursor:pointer;
+  transition:.2s;user-select:none;
+}
+.contact-chip:hover{border-color:var(--purple);color:var(--purple)}
+.contact-chip.active{background:#bb86fc15;border-color:var(--purple);color:var(--purple)}
 
-  .account-chip {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 12px;
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    color: var(--text-primary);
-    padding: 3px 10px;
-    border-radius: 20px;
-  }
+.btn-row{display:flex;gap:8px;margin-top:14px}
 
-  footer {
-    text-align: center;
-    padding-top: 24px;
-    font-size: 11px;
-    color: var(--text-dim);
-    letter-spacing: 0.05em;
-  }
+.btn{
+  padding:8px 18px;border:none;border-radius:5px;
+  font-family:var(--mono);font-size:11px;font-weight:600;
+  cursor:pointer;letter-spacing:.06em;transition:.15s;
+}
+.btn-primary{
+  background:var(--cyan);color:#000;
+  box-shadow:0 0 12px #00d4ff40;
+}
+.btn-primary:hover{background:#33ddff;box-shadow:0 0 20px #00d4ff60}
+.btn-outline{
+  background:transparent;color:var(--text);
+  border:1px solid var(--border2);
+}
+.btn-outline:hover{border-color:var(--text)}
+.btn-excel{
+  background:#1a6b2a;color:#00e676;border:1px solid #00e67640;
+  box-shadow:0 0 10px #00e67620;
+}
+.btn-excel:hover{background:#225935;box-shadow:0 0 16px #00e67640}
+
+/* task list */
+.tasks-list{display:flex;flex-direction:column;gap:10px}
+
+.task-item{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--r);overflow:hidden;
+  transition:.2s;
+}
+.task-item:hover{border-color:var(--border2)}
+
+.task-main{
+  display:flex;align-items:center;gap:12px;
+  padding:12px 14px;cursor:pointer;
+}
+.task-status-dot{
+  width:10px;height:10px;border-radius:50%;flex-shrink:0;
+}
+.task-name{font-size:14px;font-weight:500;flex:1}
+.task-meta{
+  display:flex;align-items:center;gap:8px;flex-shrink:0;
+}
+.status-badge{
+  font-family:var(--mono);font-size:9px;font-weight:700;
+  padding:2px 7px;border-radius:3px;letter-spacing:.06em;
+}
+.s-doing{background:#ffc10720;color:var(--amber);border:1px solid #ffc10740}
+.s-done{background:#00e67620;color:var(--green);border:1px solid #00e67640}
+.s-todo{background:#526070;color:#aaa;border:1px solid #3a4a58}
+
+.task-expand{
+  font-family:var(--mono);font-size:16px;color:var(--muted);
+  transition:.2s;
+}
+.task-item.open .task-expand{transform:rotate(90deg)}
+
+.task-detail{
+  display:none;
+  border-top:1px solid var(--border);
+  padding:12px 14px;
+  background:#0a0f18;
+}
+.task-item.open .task-detail{display:block}
+
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+.dg-full{grid-column:1/-1}
+
+.d-item{display:flex;flex-direction:column;gap:2px}
+.d-lbl{font-family:var(--mono);font-size:9px;color:var(--label);letter-spacing:.08em}
+.d-val{font-family:var(--mono);font-size:12px;color:var(--text)}
+
+.members-list{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.m-tag{
+  font-family:var(--mono);font-size:10px;
+  background:#00d4ff15;border:1px solid #00d4ff30;color:var(--cyan);
+  padding:2px 8px;border-radius:3px;
+}
+.c-tag{
+  font-family:var(--mono);font-size:10px;
+  background:#bb86fc15;border:1px solid #bb86fc30;color:var(--purple);
+  padding:2px 8px;border-radius:3px;
+}
+
+.task-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--border)}
+
+/* status selector in edit */
+.status-sel{
+  display:flex;gap:5px;margin-top:4px;
+}
+.ss-opt{
+  flex:1;padding:5px;border:1px solid var(--border2);border-radius:4px;
+  background:transparent;color:var(--muted);
+  font-family:var(--mono);font-size:9px;cursor:pointer;text-align:center;
+  transition:.15s;
+}
+.ss-opt:hover{border-color:var(--border2);color:var(--text)}
+.ss-opt.active-todo{border-color:#526070;color:#aaa;background:#52607020}
+.ss-opt.active-doing{border-color:var(--amber);color:var(--amber);background:#ffc10715}
+.ss-opt.active-done{border-color:var(--green);color:var(--green);background:#00e67615}
+
+/* empty state */
+.empty{
+  text-align:center;padding:40px 20px;
+  font-family:var(--mono);font-size:12px;color:var(--muted);
+  border:1px dashed var(--border);border-radius:var(--r);
+}
+.empty .e-icon{font-size:30px;margin-bottom:8px;opacity:.4}
+
+/* modal */
+.modal-bg{
+  display:none;position:fixed;inset:0;
+  background:#00000088;backdrop-filter:blur(4px);
+  z-index:500;align-items:center;justify-content:center;
+}
+.modal-bg.open{display:flex}
+.modal{
+  background:var(--panel);border:1px solid var(--border2);
+  border-radius:var(--r);padding:20px;
+  width:90%;max-width:480px;max-height:80vh;overflow-y:auto;
+}
+.modal-title{
+  font-family:var(--mono);font-size:12px;font-weight:700;
+  color:var(--cyan);letter-spacing:.12em;margin-bottom:16px;
+}
+.modal-actions{display:flex;gap:8px;margin-top:16px;justify-content:flex-end}
+
+/* toast */
+.toast{
+  position:fixed;bottom:20px;right:20px;z-index:999;
+  background:#00e67618;border:1px solid var(--green);color:var(--green);
+  font-family:var(--mono);font-size:11px;
+  padding:10px 16px;border-radius:6px;
+  transform:translateY(60px);opacity:0;transition:.3s;pointer-events:none;
+}
+.toast.show{transform:none;opacity:1}
+
+a{color:var(--cyan);font-size:11px}
+
+@media(max-width:959px){
+  .sidebar{border-right:none;border-bottom:1px solid var(--border);min-height:unset}
+  .form-grid{grid-template-columns:1fr}
+  .form-full{grid-column:1}
+  .detail-grid{grid-template-columns:1fr}
+  .dg-full{grid-column:1}
+}
 </style>
 </head>
 <body>
 
-<header>
-  <h1>測試帳密總覽</h1>
-  <p>TEST CREDENTIALS · INTERNAL USE ONLY</p>
-  <div class="divider"></div>
-</header>
-
-<!-- 街口支付 -->
-<div class="card">
-  <div class="card-header">
-    <div class="card-icon icon-green">💳</div>
-    <span class="card-title title-green">街口支付</span>
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="logo">TEST<span>/</span>DASH</div>
+    <div class="env-badge">TEST ENV</div>
   </div>
-  <div class="rows">
-    <div class="row">
-      <span class="row-label">電話號碼</span>
-      <span class="row-value">0922-837-056</span>
-    </div>
-    <div class="row">
-      <span class="row-label">街口帳號</span>
-      <span class="row-value">901160736</span>
-    </div>
-    <div class="row">
-      <span class="row-label">身份證號</span>
-      <span class="row-value">K122837056</span>
-    </div>
-    <div class="row">
-      <span class="row-label">驗證碼</span>
-      <span class="row-value">837056</span>
-    </div>
+  <div class="topbar-right">
+    <div class="dot"></div>
+    <span id="clock"></span>
   </div>
-  <!-- 付款密碼高亮 -->
-  <div class="row pay-row">
-    <span class="pay-badge">付款密碼</span>
-    <span class="row-label">付款密碼</span>
-    <span class="row-value">111111</span>
-  </div>
-  <div style="height:8px"></div>
 </div>
 
-<!-- 台新PAY -->
-<div class="card">
-  <div class="card-header">
-    <div class="card-icon icon-blue">🏦</div>
-    <span class="card-title title-blue">台新 PAY</span>
-  </div>
-  <div class="rows">
-    <div class="row">
-      <span class="row-label">身分證號碼</span>
-      <span class="row-value">N223 550 570</span>
-    </div>
-    <div class="row" style="border-bottom:none">
-      <span class="row-label" style="font-size:10px;color:var(--text-dim)">(POSTEAM)</span>
-      <span></span>
-    </div>
-    <div class="row">
-      <span class="row-label">使用者代號</span>
-      <span class="row-value">test12</span>
-    </div>
-    <div class="row">
-      <span class="row-label">登入密碼</span>
-      <span class="row-value">abab12</span>
-    </div>
-    <div class="row">
-      <span class="row-label">裝置綁定碼</span>
-      <span class="row-value">000000</span>
-    </div>
-    <div class="row">
-      <span class="row-label">OTP 密碼</span>
-      <span class="row-value">123456</span>
-    </div>
-    <div class="row note-row" style="border-top: 1px solid var(--border)">
-      <span class="note-text">🔗 APP下載：wallet-t.taishinbank.com.tw</span>
-    </div>
-  </div>
-  <!-- 付款密碼高亮 -->
-  <div class="row pay-row">
-    <span class="pay-badge">付款密碼</span>
-    <span class="row-label">付款密碼</span>
-    <span class="row-value">112233</span>
-  </div>
-  <div style="height:8px"></div>
-</div>
+<!-- LAYOUT -->
+<div class="layout">
 
-<!-- GLNPAY -->
-<div class="card">
-  <div class="card-header">
-    <div class="card-icon icon-orange">🌐</div>
-    <span class="card-title title-orange">GLN PAY</span>
-  </div>
-  <div class="rows">
-    <div class="row">
-      <span class="row-label">網址</span>
-      <span class="url-value">test-pvt.glnpay.com:11443</span>
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="showTab('creds')">帳密資料</button>
+      <button class="tab-btn" onclick="showTab('info')">系統資訊</button>
     </div>
-    <div class="row" style="align-items:flex-start">
-      <span class="row-label">帳號</span>
-      <div class="multi-account">
-        <span class="account-chip">tsobtw01</span>
-        <span class="account-chip">tsobtw02</span>
-        <span class="account-chip">tsobtw03</span>
+
+    <div id="tab-creds" class="creds-panel">
+
+      <!-- 街口 -->
+      <div class="cred-card jko">
+        <div class="cred-head">
+          <div class="cred-ico">口</div>
+          <h3>街口支付 JKO PAY</h3>
+        </div>
+        <div class="cred-body">
+          <div class="cr pay">
+            <div class="cr-lbl">付款密碼</div>
+            <div class="cr-val">111111<span class="pay-tag">PAY</span></div>
+          </div>
+          <div class="cr"><div class="cr-lbl">電話號碼</div><div class="cr-val">0922-837-056</div></div>
+          <div class="cr"><div class="cr-lbl">街口帳號</div><div class="cr-val">901160736</div></div>
+          <div class="cr"><div class="cr-lbl">身分證號</div><div class="cr-val">K122837056</div></div>
+          <div class="cr"><div class="cr-lbl">驗證碼</div><div class="cr-val">837056</div></div>
+        </div>
+      </div>
+
+      <!-- 台新 -->
+      <div class="cred-card tsn">
+        <div class="cred-head">
+          <div class="cred-ico">新</div>
+          <h3>台新 PAY</h3>
+        </div>
+        <div class="cred-body">
+          <div class="cr pay">
+            <div class="cr-lbl">付款密碼①</div>
+            <div class="cr-val">121212<span class="pay-tag">PAY</span></div>
+          </div>
+          <div class="cr pay">
+            <div class="cr-lbl">付款密碼②</div>
+            <div class="cr-val">112233<span class="pay-tag">PAY</span></div>
+          </div>
+          <div class="cr"><div class="cr-lbl">身分證號</div><div class="cr-val">N223 550 570</div></div>
+          <div class="cr"><div class="cr-lbl">備註</div><div class="cr-val" style="color:var(--muted);font-size:11px">POSTEAM</div></div>
+          <div class="cr"><div class="cr-lbl">使用者代號</div><div class="cr-val">test12</div></div>
+          <div class="cr"><div class="cr-lbl">登入密碼</div><div class="cr-val">abab12</div></div>
+          <div class="cr"><div class="cr-lbl">裝置驗證碼</div><div class="cr-val">000000</div></div>
+          <div class="cr"><div class="cr-lbl">OTP 密碼</div><div class="cr-val">123456</div></div>
+          <div class="cr"><div class="cr-lbl">網址</div><div class="cr-val"><a href="https://wallet-t.taishinbank.com.tw/RichartLife_online/RichartLife_5.671.htm" target="_blank">wallet-t.taishinbank ↗</a></div></div>
+        </div>
+      </div>
+
+      <!-- GLN -->
+      <div class="cred-card gln">
+        <div class="cred-head">
+          <div class="cred-ico">G</div>
+          <h3>GLNPAY</h3>
+        </div>
+        <div class="cred-body">
+          <div class="cr pay">
+            <div class="cr-lbl">支付密碼</div>
+            <div class="cr-val">111222<span class="pay-tag">PAY</span></div>
+          </div>
+          <div class="cr"><div class="cr-lbl">網址</div><div class="cr-val"><a href="https://test-pvt.glnpay.com:11443/" target="_blank">test-pvt.glnpay.com ↗</a></div></div>
+          <div class="cr"><div class="cr-lbl">密碼</div><div class="cr-val">qqwwee11</div></div>
+          <div class="cr"><div class="cr-lbl">國家選擇</div><div class="cr-val">Taiwan</div></div>
+        </div>
+        <div class="accs">
+          <div style="padding:4px 14px;font-size:9px;color:var(--muted);font-family:var(--mono);letter-spacing:.08em">ACCOUNTS</div>
+          <div class="acc-row"><div class="acc-n">①</div><div class="acc-id">tsobtw01</div></div>
+          <div class="acc-row"><div class="acc-n">②</div><div class="acc-id">tsobtw02</div></div>
+          <div class="acc-row"><div class="acc-n">③</div><div class="acc-id">tsobtw03</div></div>
+        </div>
+        <div class="cred-note">⚠ 密碼需使用畫面上的虛擬鍵盤輸入</div>
+      </div>
+
+      <!-- 台灣Pay -->
+      <div class="cred-card twp">
+        <div class="cred-head">
+          <div class="cred-ico">台</div>
+          <h3>台灣 Pay</h3>
+        </div>
+        <div class="cred-body">
+          <div class="cr"><div class="cr-lbl">測試帳號</div><div class="cr-val">Taipei101</div></div>
+          <div class="cr"><div class="cr-lbl">測試密碼</div><div class="cr-val">16095410</div></div>
+        </div>
+      </div>
+
+    </div><!-- /tab-creds -->
+
+    <div id="tab-info" class="creds-panel" style="display:none">
+      <div class="cred-card">
+        <div class="cred-body">
+          <div class="cr"><div class="cr-lbl">環境</div><div class="cr-val" style="color:var(--amber)">TEST / UAT</div></div>
+          <div class="cr"><div class="cr-lbl">版本</div><div class="cr-val">v1.0.0</div></div>
+          <div class="cr"><div class="cr-lbl">製作</div><div class="cr-val" style="color:var(--muted);font-size:11px">INTERNAL ONLY</div></div>
+        </div>
       </div>
     </div>
-    <div class="row">
-      <span class="row-label">密碼</span>
-      <span class="row-value">qqwwee11</span>
+
+  </div><!-- /sidebar -->
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- stats -->
+    <div class="stats" id="stats">
+      <div class="stat-box"><div class="stat-num c-cyan" id="st-total">0</div><div class="stat-lbl">TOTAL TASKS</div></div>
+      <div class="stat-box"><div class="stat-num c-amber" id="st-doing">0</div><div class="stat-lbl">DOING</div></div>
+      <div class="stat-box"><div class="stat-num c-green" id="st-done">0</div><div class="stat-lbl">DONE</div></div>
+      <div class="stat-box"><div class="stat-num" id="st-todo" style="color:var(--muted)">0</div><div class="stat-lbl">TODO</div></div>
     </div>
-    <div class="row">
-      <span class="row-label">國家選擇</span>
-      <span class="row-value">Taiwan</span>
+
+    <!-- add task form -->
+    <div class="sec-hd">
+      <span class="sec-title">新增測試任務</span>
+      <div class="sec-line"></div>
     </div>
-    <div class="row note-row" style="border-top: 1px solid var(--border)">
-      <span class="note-text">⌨️ 密碼需使用畫面上的鍵盤輸入</span>
+
+    <div class="task-form">
+      <div class="form-title">// NEW TASK</div>
+      <div class="form-grid">
+
+        <div class="f-group form-full">
+          <label class="f-label">任務名稱 TASK NAME</label>
+          <input class="f-input" id="f-name" placeholder="e.g. 台新PAY 結帳流程測試" />
+        </div>
+
+        <div class="f-group">
+          <label class="f-label">狀態 STATUS</label>
+          <div class="status-sel" id="f-status-sel">
+            <div class="ss-opt active-todo" onclick="setFormStatus('todo')">未開始</div>
+            <div class="ss-opt" onclick="setFormStatus('doing')">進行中</div>
+            <div class="ss-opt" onclick="setFormStatus('done')">已完成</div>
+          </div>
+        </div>
+
+        <div class="f-group">
+          <label class="f-label">關聯系統</label>
+          <select class="f-select" id="f-system">
+            <option value="">-- 選擇 --</option>
+            <option>街口支付</option>
+            <option>台新PAY</option>
+            <option>GLNPAY</option>
+            <option>台灣Pay</option>
+            <option>其他</option>
+          </select>
+        </div>
+
+        <div class="f-group">
+          <label class="f-label">開始日期</label>
+          <input class="f-input" id="f-start" type="date" />
+        </div>
+
+        <div class="f-group">
+          <label class="f-label">結束日期</label>
+          <input class="f-input" id="f-end" type="date" />
+        </div>
+
+        <div class="f-group form-full">
+          <label class="f-label">測試人員 TESTERS</label>
+          <div class="members-wrap" id="members-wrap">
+            <div class="member-chip" onclick="toggleMember(this,'Daniel')"><div class="dot2"></div>Daniel</div>
+            <div class="member-chip" onclick="toggleMember(this,'JiaJie')"><div class="dot2"></div>JiaJie</div>
+            <div class="member-chip" onclick="toggleMember(this,'Sam')"><div class="dot2"></div>Sam</div>
+            <div class="member-chip" onclick="toggleMember(this,'Kai')"><div class="dot2"></div>Kai</div>
+            <div class="member-chip" onclick="toggleMember(this,'Luna')"><div class="dot2"></div>Luna</div>
+          </div>
+        </div>
+
+        <div class="f-group form-full">
+          <label class="f-label">配合窗口 CONTACT</label>
+          <div class="contacts-wrap" id="contacts-wrap">
+            <div class="contact-chip" onclick="toggleContact(this,'銷售組')">銷售組</div>
+            <div class="contact-chip" onclick="toggleContact(this,'OB票務')">OB票務</div>
+            <div class="contact-chip" onclick="toggleContact(this,'OB紀念品')">OB紀念品</div>
+            <div class="contact-chip" onclick="toggleContact(this,'商場帳務')">商場帳務</div>
+          </div>
+        </div>
+
+        <div class="f-group form-full">
+          <label class="f-label">備註 NOTES</label>
+          <input class="f-input" id="f-notes" placeholder="選填" />
+        </div>
+
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="addTask()">＋ 新增任務</button>
+        <button class="btn btn-outline" onclick="clearForm()">清除</button>
+      </div>
+    </div>
+
+    <!-- task list -->
+    <div class="sec-hd">
+      <span class="sec-title">測試任務清單</span>
+      <div class="sec-line"></div>
+    </div>
+
+    <div class="tasks-list" id="tasks-list">
+      <div class="empty" id="empty-state">
+        <div class="e-icon">📋</div>
+        尚無任務，請新增第一筆測試任務
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /layout -->
+
+<!-- MODAL for Excel gen -->
+<div class="modal-bg" id="modal-bg" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-title">// GENERATE EXCEL</div>
+    <div class="form-grid">
+      <div class="f-group form-full">
+        <label class="f-label">任務名稱（用於檔名）</label>
+        <input class="f-input" id="m-taskname" readonly />
+      </div>
+      <div class="f-group">
+        <label class="f-label">年月（YYYYMM）</label>
+        <input class="f-input" id="m-ym" maxlength="6" placeholder="202604" />
+      </div>
+      <div class="f-group">
+        <label class="f-label">預覽檔名</label>
+        <div class="f-input" id="m-preview" style="color:var(--green);font-size:11px;background:#0a1a0f"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModalDirect()">取消</button>
+      <button class="btn btn-excel" onclick="doExport()">⬇ 下載 Excel</button>
     </div>
   </div>
-  <!-- 支付密碼高亮 -->
-  <div class="row pay-row">
-    <span class="pay-badge">支付密碼</span>
-    <span class="row-label">支付密碼</span>
-    <span class="row-value">111222</span>
-  </div>
-  <div style="height:8px"></div>
 </div>
 
-<footer>⚠️ 僅供內部測試使用，請勿對外分享</footer>
+<!-- TOAST -->
+<div class="toast" id="toast">✓ 操作成功</div>
 
+<script>
+// ── state ──
+let tasks = JSON.parse(localStorage.getItem('td_tasks') || '[]');
+let formStatus = 'todo';
+let selectedMembers = [];
+let selectedContacts = [];
+let currentTaskId = null;
+
+// ── clock ──
+function tick(){
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleDateString('zh-TW') + '  ' +
+    now.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+tick(); setInterval(tick, 1000);
+
+// ── tabs ──
+function showTab(t){
+  document.getElementById('tab-creds').style.display = t==='creds'?'block':'none';
+  document.getElementById('tab-info').style.display  = t==='info' ?'block':'none';
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&t==='creds')||(i===1&&t==='info')));
+}
+
+// ── form helpers ──
+function setFormStatus(s){
+  formStatus = s;
+  const opts = document.querySelectorAll('#f-status-sel .ss-opt');
+  opts.forEach(o=>o.className='ss-opt');
+  if(s==='todo')  opts[0].className='ss-opt active-todo';
+  if(s==='doing') opts[1].className='ss-opt active-doing';
+  if(s==='done')  opts[2].className='ss-opt active-done';
+}
+
+function toggleMember(el, name){
+  el.classList.toggle('active');
+  if(el.classList.contains('active')) selectedMembers.push(name);
+  else selectedMembers = selectedMembers.filter(m=>m!==name);
+}
+
+function toggleContact(el, name){
+  el.classList.toggle('active');
+  if(el.classList.contains('active')) selectedContacts.push(name);
+  else selectedContacts = selectedContacts.filter(c=>c!==name);
+}
+
+function clearForm(){
+  document.getElementById('f-name').value='';
+  document.getElementById('f-system').value='';
+  document.getElementById('f-start').value='';
+  document.getElementById('f-end').value='';
+  document.getElementById('f-notes').value='';
+  selectedMembers=[];selectedContacts=[];
+  document.querySelectorAll('.member-chip').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('.contact-chip').forEach(c=>c.classList.remove('active'));
+  setFormStatus('todo');
+}
+
+// ── task CRUD ──
+function addTask(){
+  const name = document.getElementById('f-name').value.trim();
+  if(!name){showToast('請輸入任務名稱','red');return;}
+  const task = {
+    id: Date.now(),
+    name, status: formStatus,
+    system: document.getElementById('f-system').value,
+    start: document.getElementById('f-start').value,
+    end: document.getElementById('f-end').value,
+    members: [...selectedMembers],
+    contacts: [...selectedContacts],
+    notes: document.getElementById('f-notes').value.trim(),
+    created: new Date().toISOString()
+  };
+  tasks.unshift(task);
+  save(); render(); clearForm();
+  showToast('✓ 任務已新增');
+}
+
+function deleteTask(id){
+  tasks = tasks.filter(t=>t.id!==id);
+  save(); render();
+  showToast('✓ 任務已刪除');
+}
+
+function changeStatus(id, s){
+  const t = tasks.find(t=>t.id===id);
+  if(t){t.status=s;save();render();}
+}
+
+function save(){
+  localStorage.setItem('td_tasks', JSON.stringify(tasks));
+}
+
+// ── render ──
+function statusInfo(s){
+  if(s==='doing') return {cls:'s-doing',dot:'var(--amber)',label:'進行中'};
+  if(s==='done')  return {cls:'s-done', dot:'var(--green)',label:'已完成'};
+  return {cls:'s-todo',dot:'var(--muted)',label:'未開始'};
+}
+
+function render(){
+  const list = document.getElementById('tasks-list');
+  const empty = document.getElementById('empty-state');
+  // stats
+  document.getElementById('st-total').textContent = tasks.length;
+  document.getElementById('st-doing').textContent = tasks.filter(t=>t.status==='doing').length;
+  document.getElementById('st-done').textContent  = tasks.filter(t=>t.status==='done').length;
+  document.getElementById('st-todo').textContent  = tasks.filter(t=>t.status==='todo').length;
+
+  if(!tasks.length){
+    list.innerHTML=''; list.appendChild(empty); empty.style.display='block'; return;
+  }
+  empty.style.display='none';
+  list.innerHTML = tasks.map(t=>{
+    const si = statusInfo(t.status);
+    const mems = t.members.map(m=>`<span class="m-tag">${m}</span>`).join('');
+    const cons = t.contacts.map(c=>`<span class="c-tag">${c}</span>`).join('');
+    return `
+    <div class="task-item" id="ti-${t.id}">
+      <div class="task-main" onclick="toggleTask(${t.id})">
+        <div class="task-status-dot" style="background:${si.dot};box-shadow:0 0 6px ${si.dot}55"></div>
+        <div class="task-name">${t.name}${t.system?`<span style="font-size:10px;color:var(--muted);margin-left:8px">[${t.system}]</span>`:''}</div>
+        <div class="task-meta">
+          <span class="status-badge ${si.cls}">${si.label}</span>
+          <span class="task-expand">›</span>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="detail-grid">
+          <div class="d-item">
+            <div class="d-lbl">開始日期</div>
+            <div class="d-val">${t.start||'—'}</div>
+          </div>
+          <div class="d-item">
+            <div class="d-lbl">結束日期</div>
+            <div class="d-val">${t.end||'—'}</div>
+          </div>
+          <div class="d-item dg-full">
+            <div class="d-lbl">測試人員</div>
+            <div class="members-list">${mems||'<span style="color:var(--muted);font-size:11px">未指定</span>'}</div>
+          </div>
+          <div class="d-item dg-full">
+            <div class="d-lbl">配合窗口</div>
+            <div class="members-list">${cons||'<span style="color:var(--muted);font-size:11px">未指定</span>'}</div>
+          </div>
+          ${t.notes?`<div class="d-item dg-full"><div class="d-lbl">備註</div><div class="d-val" style="color:var(--muted)">${t.notes}</div></div>`:''}
+        </div>
+        <div class="d-lbl" style="margin-bottom:5px">變更狀態</div>
+        <div class="status-sel">
+          <div class="ss-opt ${t.status==='todo'?'active-todo':''}" onclick="changeStatus(${t.id},'todo')">未開始</div>
+          <div class="ss-opt ${t.status==='doing'?'active-doing':''}" onclick="changeStatus(${t.id},'doing')">進行中</div>
+          <div class="ss-opt ${t.status==='done'?'active-done':''}" onclick="changeStatus(${t.id},'done')">已完成</div>
+        </div>
+        <div class="task-actions">
+          <button class="btn btn-excel" onclick="openModal(${t.id})">📊 生成測試清單 Excel</button>
+          <button class="btn btn-outline" style="color:var(--red);border-color:#ff475740" onclick="deleteTask(${t.id})">✕ 刪除</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleTask(id){
+  const el = document.getElementById('ti-'+id);
+  el.classList.toggle('open');
+}
+
+// ── modal & export ──
+function openModal(id){
+  currentTaskId = id;
+  const t = tasks.find(t=>t.id===id);
+  document.getElementById('m-taskname').value = t.name;
+  // auto fill ym from start date or today
+  const ref = t.start ? t.start : new Date().toISOString().slice(0,10);
+  const ym = ref.replace(/-/g,'').slice(0,6);
+  document.getElementById('m-ym').value = ym;
+  updatePreview();
+  document.getElementById('modal-bg').classList.add('open');
+}
+
+function updatePreview(){
+  const ym = document.getElementById('m-ym').value;
+  const name = document.getElementById('m-taskname').value;
+  document.getElementById('m-preview').textContent = `${ym}_${name}_測試清單.xlsx`;
+}
+document.getElementById('m-ym').addEventListener('input', updatePreview);
+
+function closeModal(e){ if(e.target===document.getElementById('modal-bg')) closeModalDirect(); }
+function closeModalDirect(){ document.getElementById('modal-bg').classList.remove('open'); }
+
+function doExport(){
+  const t = tasks.find(t=>t.id===currentTaskId);
+  if(!t) return;
+  const ym = document.getElementById('m-ym').value || new Date().toISOString().slice(0,7).replace('-','');
+  const filename = `${ym}_${t.name}_測試清單.xlsx`;
+  const si = statusInfo(t.status);
+  const wb = XLSX.utils.book_new();
+
+  // ══════════════════════════════════════
+  // Sheet 1 — 任務摘要 & 帳密
+  // ══════════════════════════════════════
+  const ws1 = XLSX.utils.aoa_to_sheet([]);
+  const s1rows = [
+    // [A, B, C, D, E]
+    [`${t.name} — 測試任務資訊`, '', '', '', ''],
+    ['任務名稱', t.name,            '產出日期', new Date().toLocaleDateString('zh-TW'), ''],
+    ['測試期間', (t.start||'—') + ' ～ ' + (t.end||'—'), '關聯系統', t.system||'—', ''],
+    ['測試人員', t.members.join('、')||'—', '配合窗口', t.contacts.join('、')||'—', ''],
+    ['狀態',    si.label,           '備註',     t.notes||'—', ''],
+    ['','','','',''],
+    // 台新PAY creds
+    ['【台新 PAY】帳密', '', '', '', ''],
+    ['欄位','帳密內容','說明','',''],
+    ['付款密碼①','121212','★ 最常用，優先使用','',''],
+    ['付款密碼②','112233','備用付款密碼','',''],
+    ['身分證號','N223 550 570','POSTEAM 測試帳號','',''],
+    ['使用者代號','test12','','',''],
+    ['登入密碼','abab12','','',''],
+    ['裝置綁定驗證碼','000000','','',''],
+    ['OTP 密碼','123456','','',''],
+    ['測試網址','wallet-t.taishinbank.com.tw','RichartLife_5.671.htm','',''],
+    ['','','','',''],
+    // 街口
+    ['【街口支付】帳密', '', '', '', ''],
+    ['欄位','帳密內容','說明','',''],
+    ['付款密碼','111111','★ 支付時使用','',''],
+    ['電話號碼','0922-837-056','','',''],
+    ['街口帳號','901160736','','',''],
+    ['身分證號','K122837056','','',''],
+    ['驗證碼','837056','','',''],
+    ['','','','',''],
+    // GLN
+    ['【GLNPAY】帳密', '', '', '', ''],
+    ['欄位','帳密內容','說明','',''],
+    ['支付密碼','111222','★ 支付時使用','',''],
+    ['帳號①','tsobtw01','','',''],
+    ['帳號②','tsobtw02','','',''],
+    ['帳號③','tsobtw03','','',''],
+    ['登入密碼','qqwwee11','需使用畫面上的虛擬鍵盤','',''],
+    ['國家選擇','Taiwan','下拉選單選取','',''],
+    ['測試網址','test-pvt.glnpay.com:11443','','',''],
+    ['','','','',''],
+    // 台灣Pay
+    ['【台灣 Pay】帳密', '', '', '', ''],
+    ['欄位','帳密內容','說明','',''],
+    ['測試帳號','Taipei101','','',''],
+    ['測試密碼','16095410','','',''],
+    ['','','','',''],
+    ['★ 黃底欄位為付款密碼，交易測試時請優先確認','','','',''],
+  ];
+  XLSX.utils.sheet_add_aoa(ws1, s1rows, {origin:'A1'});
+  ws1['!cols'] = [{wch:20},{wch:28},{wch:26},{wch:18},{wch:10}];
+  // merges: title row, section titles, note
+  ws1['!merges'] = [
+    {s:{r:0,c:0},e:{r:0,c:4}},
+    {s:{r:6,c:0},e:{r:6,c:4}},
+    {s:{r:17,c:0},e:{r:17,c:4}},
+    {s:{r:25,c:0},e:{r:25,c:4}},
+    {s:{r:33,c:0},e:{r:33,c:4}},
+    {s:{r:s1rows.length-1,c:0},e:{r:s1rows.length-1,c:4}},
+  ];
+  XLSX.utils.book_append_sheet(wb, ws1, '任務摘要＆帳密');
+
+  // ══════════════════════════════════════
+  // Sheet 2 — 驗證清單（圖片範本格式）
+  // ══════════════════════════════════════
+  const ws2 = XLSX.utils.aoa_to_sheet([]);
+  const posItems = getVerifyItems(t.system);
+
+  // Row 0: big title
+  const titleRow = [`${t.name} 測試驗證清單　　日期：${new Date().toLocaleDateString('zh-TW')}　　測試人員：${t.members.join('、')||'—'}`, '', '', '', '', '', '', ''];
+  // Row 1: column headers
+  const hdrRow = ['驗證項目 / 機台', '商場POS', 'MPOS', '票務人工POS', '紀念品POS', '結果判定', '測試人員', '備註'];
+  const dataRows = posItems.map(item => [
+    item.label,
+    item.pos  !== undefined ? item.pos  : '',
+    item.mpos !== undefined ? item.mpos : '',
+    item.tpos !== undefined ? item.tpos : '',
+    item.kpos !== undefined ? item.kpos : '',
+    '',
+    '',
+    item.note || '',
+  ]);
+  // extra custom rows
+  const customRows = [
+    ['其他測試案例（可自行新增）','','','','','','',''],
+    ['其他測試案例（可自行新增）','','','','','','',''],
+    ['其他測試案例（可自行新增）','','','','','','',''],
+  ];
+  const legendRow  = ['【結果判定】  ○ Pass　✕ Fail　△ 部分通過　N/A 不適用','','','','','','',''];
+  const payRow     = ['【付款密碼速查】台新PAY：121212 / 112233　街口：111111　GLNPAY：111222　台灣Pay帳號：Taipei101 / 16095410','','','','','','',''];
+
+  const allRows = [titleRow, hdrRow, ...dataRows, ...customRows, [], legendRow, payRow];
+  XLSX.utils.sheet_add_aoa(ws2, allRows, {origin:'A1'});
+  ws2['!cols'] = [{wch:42},{wch:13},{wch:11},{wch:14},{wch:13},{wch:12},{wch:14},{wch:22}];
+
+  // merges for title + legend + payRow + custom rows
+  const totalDataRows = dataRows.length + customRows.length;
+  ws2['!merges'] = [
+    {s:{r:0,c:0},e:{r:0,c:7}},  // title
+    {s:{r:2+totalDataRows+1,c:0},e:{r:2+totalDataRows+1,c:7}}, // legend
+    {s:{r:2+totalDataRows+2,c:0},e:{r:2+totalDataRows+2,c:7}}, // pay row
+  ];
+  XLSX.utils.book_append_sheet(wb, ws2, '測試驗證清單');
+
+  // ══════════════════════════════════════
+  // Sheet 3 — 人員分工
+  // ══════════════════════════════════════
+  const ws3 = XLSX.utils.aoa_to_sheet([]);
+  const memberList = t.members.length ? t.members : ['—'];
+  XLSX.utils.sheet_add_aoa(ws3, [
+    ['測試人員分工表','','',''],
+    ['測試人員','負責測試項目','完成 / 總數','備註'],
+    ...memberList.map(m=>[m,'','','']),
+  ], {origin:'A1'});
+  ws3['!cols'] = [{wch:14},{wch:38},{wch:14},{wch:22}];
+  ws3['!merges'] = [{s:{r:0,c:0},e:{r:0,c:3}}];
+  XLSX.utils.book_append_sheet(wb, ws3, '人員分工');
+
+  XLSX.writeFile(wb, filename);
+  showToast('✓ Excel 已下載：' + filename);
+  closeModalDirect();
+}
+
+// 驗證項目範本（對應圖片的驗證項目 × 機台矩陣）
+function getVerifyItems(system) {
+  // label, pos, mpos, tpos, kpos, note
+  // undefined = 空白可填；特定字串 = 固定值
+  const base = [
+    {label:'銷售：新支付 100元'},
+    {label:'當日退：新支付 100元'},
+    {label:'銷售：新支付 10+現金50'},
+    {label:'當日退：新支付 10+現金50'},
+    {label:'銷售：新支付 10+LINEPAY 50'},
+    {label:'當日退：新支付 10+ LINEPAY 50'},
+    {label:'銷售：新支付 50元+電子禮券 50元'},
+    {label:'當日退：新支付 50元+電子禮券 50元'},
+    {label:'銷售：新支付 50元+電子禮券 50元（需人工後台退款）',
+      pos:'無後台', mpos:'-', tpos:'-', kpos:'-', note:'需人工後台操作'},
+    {label:'銷售：新支付 50+點數100點(25元)'},
+    {label:'當日退：新支付 50+點數100點(25元)'},
+    {label:'銷售：新支付 1元'},
+    {label:'隔日退：新支付 1元'},
+  ];
+  if(system === 'GLNPAY') {
+    base.push({label:'虛擬鍵盤輸入密碼', note:'需使用畫面上鍵盤，不可直接鍵入'});
+    base.push({label:'國家選擇 Taiwan', note:'下拉選單確認顯示正確'});
+  }
+  if(system === '台新PAY') {
+    base.push({label:'裝置綁定驗證 (000000)', note:'綁定完成後方可付款'});
+    base.push({label:'OTP 驗證 (123456)', note:''});
+  }
+  return base;
+}
+
+// ── toast ──
+function showToast(msg, type){
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.borderColor = type==='red'?'var(--red)':'var(--green)';
+  el.style.color = type==='red'?'var(--red)':'var(--green)';
+  el.style.background = type==='red'?'#ff475718':'#00e67618';
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2800);
+}
+
+// ── init ──
+render();
+</script>
 </body>
 </html>
