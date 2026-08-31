@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>測試環境儀錶板</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+:root{
+  --bg:#f5f3ef;--panel:#ffffff;--card:#ffffff;--sidebar:#faf9f6;
+  --border:#e2ddd6;--border2:#cdc7bc;
+  --ink:#2c2825;--ink2:#5a5450;--muted:#9b9289;--label:#7a7068;
+  --sage:#5c7a6e;--sage-lt:#eef3f1;--sage-md:#a8c4bb;
+  --rust:#b05a3a;--rust-lt:#fdf0ec;
+  --clay:#7a6a5a;--clay-lt:#f0ede8;
+  --gold:#8b7355;
+  --serif:'Noto Serif TC',serif;--sans:'Noto Sans TC',sans-serif;--mono:'DM Mono',monospace;
+  --r:10px;--shadow:0 2px 12px rgba(44,40,37,.07);--shadow2:0 4px 24px rgba(44,40,37,.11);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.7}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:var(--panel);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100}
+.logo{font-family:var(--serif);font-size:17px;font-weight:600;color:var(--ink);letter-spacing:.03em}
+.logo em{color:var(--sage);font-style:normal}
+.env-badge{font-family:var(--mono);font-size:10px;letter-spacing:.12em;background:var(--sage-lt);border:1px solid var(--sage-md);color:var(--sage);padding:3px 10px;border-radius:20px}
+.topbar-right{font-family:var(--mono);font-size:11px;color:var(--muted);display:flex;align-items:center;gap:10px}
+.live-dot{width:7px;height:7px;border-radius:50%;background:var(--sage);animation:blink 2.4s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.tb-btn{font-family:var(--sans);font-size:11px;border:1px solid var(--border2);background:transparent;color:var(--ink2);padding:5px 11px;border-radius:6px;cursor:pointer;transition:.15s}
+.tb-btn:hover{border-color:var(--sage);color:var(--sage)}
+
+.layout{display:grid;grid-template-columns:1fr}
+@media(min-width:960px){.layout{grid-template-columns:320px 1fr}}
+
+.sidebar{background:var(--sidebar);border-right:1px solid var(--border);min-height:calc(100vh - 53px)}
+.tab-nav{display:flex;border-bottom:1px solid var(--border)}
+.tab-btn{flex:1;padding:13px 8px;border:none;cursor:pointer;background:transparent;color:var(--muted);font-family:var(--sans);font-size:13px;border-bottom:2px solid transparent;transition:.2s}
+.tab-btn.active{color:var(--sage);border-bottom-color:var(--sage);font-weight:600}
+
+.creds-panel{padding:18px}
+
+.cred-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px;overflow:hidden;box-shadow:var(--shadow)}
+.cred-head{display:flex;align-items:center;gap:10px;padding:11px 15px;border-bottom:1px solid var(--border)}
+.cred-ico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:var(--serif);font-size:13px;font-weight:700;flex-shrink:0}
+.cred-head h3{font-family:var(--serif);font-size:14px;font-weight:600;letter-spacing:.03em}
+.cred-edit-btn{background:transparent;border:none;cursor:pointer;font-size:14px;color:var(--muted);padding:4px 6px;border-radius:5px}
+.cred-edit-btn:hover{color:var(--sage);background:var(--sage-lt)}
+.cred-body{padding:4px 0}
+.cr{display:flex;align-items:baseline;padding:7px 15px;border-bottom:1px solid #f0ede8}
+.cr:last-child{border-bottom:none}
+.cr-lbl{font-family:var(--mono);font-size:10px;color:var(--label);min-width:82px;flex-shrink:0;letter-spacing:.05em}
+.cr-val{font-family:var(--mono);font-size:14px;color:var(--ink);word-break:break-all}
+.cr.pay{border-left:3px solid var(--sage);background:var(--sage-lt);padding:10px 15px}
+.cr.pay .cr-lbl{color:var(--sage);font-weight:500}
+.cr.pay .cr-val{font-size:22px;font-weight:700;color:var(--sage);letter-spacing:.18em}
+.pay-tag{font-size:9px;font-family:var(--mono);font-weight:600;background:var(--sage);color:#fff;padding:1px 5px;border-radius:3px;margin-left:8px;vertical-align:middle}
+.cred-note{font-size:11px;padding:8px 15px;border-top:1px solid var(--border);color:var(--rust);background:var(--rust-lt);line-height:1.6}
+
+.main{padding:24px}
+
+.stats{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+.stat-box{flex:1;min-width:80px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow)}
+.stat-num{font-family:var(--serif);font-size:26px;font-weight:700;line-height:1}
+.stat-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.08em}
+.c-sage{color:var(--sage)}.c-rust{color:var(--rust)}.c-clay{color:var(--clay)}
+
+.sec-hd{display:flex;align-items:center;margin-bottom:14px;gap:12px}
+.sec-title{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--ink);white-space:nowrap}
+.sec-line{flex:1;height:1px;background:var(--border)}
+
+.task-form{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:20px;margin-bottom:24px;box-shadow:var(--shadow)}
+.form-sub{font-family:var(--mono);font-size:10px;color:var(--muted);letter-spacing:.1em;margin-bottom:16px}
+.f-group{display:flex;flex-direction:column;gap:5px}
+.f-label{font-size:11px;color:var(--label);font-weight:500}
+.f-input,.f-select{background:#faf9f6;border:1px solid var(--border2);border-radius:7px;padding:9px 12px;color:var(--ink);font-family:var(--sans);font-size:14px;outline:none;transition:.2s;width:100%}
+.f-input:focus,.f-select:focus{border-color:var(--sage);box-shadow:0 0 0 3px rgba(92,122,110,.12);background:var(--panel)}
+.f-select option{background:var(--panel)}
+.members-wrap,.contacts-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:3px}
+.member-chip,.contact-chip{padding:5px 13px;border-radius:20px;font-size:12px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;transition:.18s;user-select:none;color:var(--ink2);display:flex;align-items:center;gap:5px}
+.member-chip:hover,.contact-chip:hover{border-color:var(--sage);color:var(--sage)}
+.member-chip.active{background:var(--sage-lt);border-color:var(--sage);color:var(--sage);font-weight:600}
+.contact-chip.active{background:var(--rust-lt);border-color:var(--rust);color:var(--rust);font-weight:600}
+.dot2{width:6px;height:6px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:.18s}
+.member-chip.active .dot2{background:var(--sage)}
+.status-sel{display:flex;gap:5px;height:38px}
+.ss-opt{flex:1;border:1px solid var(--border2);border-radius:7px;background:var(--bg);color:var(--muted);font-size:12px;cursor:pointer;text-align:center;transition:.15s;display:flex;align-items:center;justify-content:center}
+.ss-opt:hover{border-color:var(--sage-md);color:var(--ink)}
+.ss-opt.active-todo{border-color:var(--clay);color:var(--clay);background:var(--clay-lt);font-weight:600}
+.ss-opt.active-doing{border-color:var(--rust);color:var(--rust);background:var(--rust-lt);font-weight:600}
+.ss-opt.active-done{border-color:var(--sage);color:var(--sage);background:var(--sage-lt);font-weight:600}
+.btn-row{display:flex;gap:10px;margin-top:18px}
+.btn{padding:9px 22px;border:none;border-radius:7px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
+.btn-primary{background:var(--sage);color:#fff;box-shadow:0 2px 8px rgba(92,122,110,.3)}
+.btn-primary:hover{background:#4d6b5f}
+.btn-outline{background:transparent;color:var(--ink2);border:1px solid var(--border2)}
+.btn-outline:hover{border-color:var(--ink2)}
+.btn-print{background:var(--sage-lt);color:var(--sage);border:1px solid var(--sage-md);font-weight:600}
+.btn-print:hover{background:var(--sage);color:#fff}
+
+.tasks-list{display:flex;flex-direction:column;gap:12px}
+.task-item{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);transition:.2s}
+.task-item:hover{box-shadow:var(--shadow2);border-color:var(--border2)}
+.task-main{display:flex;align-items:center;gap:12px;padding:14px 16px}
+.task-status-bar{width:4px;height:36px;border-radius:3px;flex-shrink:0}
+.task-name-wrap{flex:1;min-width:0}
+.task-name{font-family:var(--serif);font-size:15px;font-weight:600;color:var(--ink)}
+.task-sub{font-size:12px;color:var(--muted);margin-top:1px}
+.task-meta{display:flex;align-items:center;gap:6px;flex-shrink:0}
+.inline-st{padding:5px 11px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;transition:.15s;white-space:nowrap}
+.inline-st:hover{border-color:var(--sage-md);color:var(--ink)}
+.ist-todo{border-color:var(--clay)!important;color:var(--clay)!important;background:var(--clay-lt)!important;font-weight:600!important}
+.ist-doing{border-color:var(--rust)!important;color:var(--rust)!important;background:var(--rust-lt)!important;font-weight:600!important}
+.ist-done{border-color:var(--sage)!important;color:var(--sage)!important;background:var(--sage-lt)!important;font-weight:600!important}
+.task-expand{font-size:18px;color:var(--muted);cursor:pointer;transition:.2s;padding:0 4px;line-height:1}
+.task-item.open .task-expand{transform:rotate(90deg)}
+
+.task-detail{display:none;border-top:1px solid var(--border);padding:18px;background:#faf9f6}
+.task-item.open .task-detail{display:block}
+.edit-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.eg-full{grid-column:1/-1}
+.edit-label{font-size:11px;color:var(--label);font-weight:500;margin-bottom:4px}
+.edit-input,.edit-select{background:var(--panel);border:1px solid var(--border2);border-radius:7px;padding:8px 11px;color:var(--ink);font-family:var(--sans);font-size:14px;outline:none;transition:.2s;width:100%}
+.edit-input:focus,.edit-select:focus{border-color:var(--sage);box-shadow:0 0 0 3px rgba(92,122,110,.1)}
+.edit-select option{background:var(--panel)}
+.edit-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:3px}
+.edit-chip{padding:4px 11px;border-radius:20px;font-size:12px;border:1px solid var(--border2);background:var(--panel);cursor:pointer;transition:.15s;user-select:none;color:var(--ink2)}
+.edit-chip:hover{border-color:var(--sage);color:var(--sage)}
+.edit-chip.active-m{background:var(--sage-lt);border-color:var(--sage);color:var(--sage);font-weight:600}
+.edit-chip.active-c{background:var(--rust-lt);border-color:var(--rust);color:var(--rust);font-weight:600}
+.edit-status{display:flex;gap:5px}
+.es-opt{flex:1;padding:7px;border:1px solid var(--border2);border-radius:7px;background:var(--panel);color:var(--muted);font-size:12px;cursor:pointer;text-align:center;transition:.15s}
+.es-opt.es-todo{border-color:var(--clay);color:var(--clay);background:var(--clay-lt);font-weight:600}
+.es-opt.es-doing{border-color:var(--rust);color:var(--rust);background:var(--rust-lt);font-weight:600}
+.es-opt.es-done{border-color:var(--sage);color:var(--sage);background:var(--sage-lt);font-weight:600}
+.task-actions{display:flex;gap:8px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border)}
+
+.empty{text-align:center;padding:48px 20px;color:var(--muted);font-size:14px;border:1.5px dashed var(--border2);border-radius:var(--r)}
+.empty .e-icon{font-size:32px;margin-bottom:10px;opacity:.4;display:block}
+
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(44,40,37,.4);backdrop-filter:blur(5px);z-index:500;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);padding:24px;width:90%;max-width:460px;box-shadow:var(--shadow2);max-height:86vh;overflow-y:auto}
+.modal-title{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--ink);margin-bottom:18px}
+.modal-actions{display:flex;gap:10px;margin-top:20px;justify-content:flex-end}
+
+.toast{position:fixed;bottom:24px;right:24px;z-index:999;background:var(--sage-lt);border:1px solid var(--sage-md);color:var(--sage);font-size:13px;padding:11px 18px;border-radius:8px;transform:translateY(60px);opacity:0;transition:.3s;pointer-events:none;box-shadow:var(--shadow2)}
+.toast.err{background:var(--rust-lt);border-color:var(--rust);color:var(--rust)}
+.toast.show{transform:none;opacity:1}
+
+input[type="date"]::-webkit-calendar-picker-indicator{opacity:.5;cursor:pointer;filter:sepia(.5) hue-rotate(100deg)}
+a{color:var(--sage);font-size:11px}
+
+.info-bar{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px 14px;margin-bottom:16px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.info-bar b{color:var(--sage)}
+.sidebar-sec{font-family:var(--serif);font-size:13px;font-weight:600;color:var(--ink2);margin-bottom:10px;margin-top:18px}
+.sb-task{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:10px 13px;margin-bottom:8px;display:flex;align-items:center;gap:10px;box-shadow:var(--shadow)}
+.sb-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.sb-info{flex:1;min-width:0}
+.sb-name{font-family:var(--serif);font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sb-meta{font-size:10px;color:var(--muted);font-family:var(--mono);margin-top:1px}
+.sb-btns{display:flex;gap:3px;flex-shrink:0}
+.sb-btn{width:24px;height:24px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;font-size:10px;transition:.15s}
+.sb-btn:hover{border-color:var(--sage);color:var(--sage)}
+.sb-btn.act-todo{border-color:var(--clay)!important;color:var(--clay)!important;background:var(--clay-lt)!important}
+.sb-btn.act-doing{border-color:var(--rust)!important;color:var(--rust)!important;background:var(--rust-lt)!important}
+.sb-btn.act-done{border-color:var(--sage)!important;color:var(--sage)!important;background:var(--sage-lt)!important}
+
+/* --- login --- */
+.login-overlay{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:1000;padding:20px}
+.login-card{background:var(--panel);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow2);padding:38px 32px;width:100%;max-width:360px;text-align:center}
+.login-card .logo{margin-bottom:4px;font-size:19px;justify-content:center;display:flex;gap:8px}
+.login-sub{font-family:var(--mono);font-size:11px;color:var(--muted);margin-bottom:22px;letter-spacing:.08em}
+.login-card input{text-align:center;letter-spacing:.15em;font-family:var(--mono)}
+.login-err{color:var(--rust);font-size:12px;margin-top:12px;display:none}
+.login-card .btn{width:100%;margin-top:14px}
+
+/* --- credential editor --- */
+.cred-field-row{display:grid;grid-template-columns:1fr 1fr auto auto;gap:6px;align-items:center;margin-bottom:8px}
+.cred-pay-check{font-size:10px;color:var(--label);display:flex;align-items:center;gap:3px;white-space:nowrap}
+.field-del-btn{background:transparent;border:1px solid var(--border2);color:var(--rust);border-radius:6px;width:30px;height:34px;cursor:pointer;font-size:13px}
+.field-del-btn:hover{background:var(--rust-lt)}
+
+/* --- backup panel --- */
+.backup-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--muted)}
+.backup-row{display:flex;justify-content:space-between;align-items:center;padding:7px 2px;border-bottom:1px dashed #ede9e3;font-size:12px}
+.backup-row:last-child{border-bottom:none}
+.backup-list{max-height:280px;overflow-y:auto;margin-top:6px}
+
+@media(max-width:959px){
+  .sidebar{border-right:none;border-bottom:1px solid var(--border);min-height:unset}
+  .edit-grid{grid-template-columns:1fr}.eg-full{grid-column:1}
+  .cred-field-row{grid-template-columns:1fr 1fr;grid-template-rows:auto auto}
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 登入畫面 ===== -->
+<div class="login-overlay" id="login-overlay">
+  <div class="login-card">
+    <div class="logo">測試環境 <em style="color:var(--sage)">儀錶板</em></div>
+    <div class="login-sub">POSTEAM · INTERNAL ONLY</div>
+    <div class="f-group">
+      <input class="f-input" id="login-pw" type="password" placeholder="請輸入共用密碼" autocomplete="off" />
+    </div>
+    <button class="btn btn-primary" id="login-btn" onclick="doLogin()">登入</button>
+    <div class="login-err" id="login-err"></div>
+  </div>
+</div>
+
+<!-- ===== 主程式（登入後顯示） ===== -->
+<div id="app-root" style="display:none">
+
+<div class="topbar">
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="logo">測試環境 <em>儀錶板</em></div>
+    <div class="env-badge">TEST ENV</div>
+  </div>
+  <div class="topbar-right">
+    <div class="live-dot"></div>
+    <span id="clock"></span>
+    <button class="tb-btn" onclick="openBackupModal()">🗂 備份/還原</button>
+    <button class="tb-btn" onclick="doLogout()">登出</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="tab-nav">
+      <button class="tab-btn active" onclick="showTab('creds')">帳密資料</button>
+      <button class="tab-btn" onclick="showTab('info')">任務總覽</button>
+    </div>
+
+    <div id="tab-creds" class="creds-panel">
+      <div id="creds-dynamic-wrap"><div style="text-align:center;color:var(--muted);font-size:12px;padding:20px">載入中…</div></div>
+    </div>
+
+    <div id="tab-info" class="creds-panel" style="display:none">
+      <div class="info-bar">
+        <span><b>ENV</b>　TEST / UAT</span>
+        <span style="width:1px;height:14px;background:var(--border);display:inline-block"></span>
+        <span><b>VER</b>　v2.0.0 (Firebase)</span>
+        <span style="width:1px;height:14px;background:var(--border);display:inline-block"></span>
+        <span>INTERNAL ONLY</span>
+      </div>
+      <div class="sidebar-sec" style="margin-top:0">所有測試任務</div>
+      <div id="sidebar-tasks"></div>
+      <div class="sidebar-sec">資料備份</div>
+      <div class="info-bar" style="flex-direction:column;align-items:flex-start;gap:8px">
+        <span id="last-backup-time">尚無備份紀錄</span>
+        <button class="tb-btn" onclick="doBackupNow('manual')">立即備份</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="stats" id="stats">
+      <div class="stat-box"><div class="stat-num c-sage" id="st-total">0</div><div class="stat-lbl">TOTAL</div></div>
+      <div class="stat-box"><div class="stat-num c-rust" id="st-doing">0</div><div class="stat-lbl">DOING</div></div>
+      <div class="stat-box"><div class="stat-num c-sage" id="st-done">0</div><div class="stat-lbl">DONE</div></div>
+      <div class="stat-box"><div class="stat-num c-clay" id="st-todo">0</div><div class="stat-lbl">TODO</div></div>
+    </div>
+
+    <div class="sec-hd"><span class="sec-title">新增測試任務</span><div class="sec-line"></div></div>
+
+    <div class="task-form">
+      <div class="form-sub">// NEW TASK</div>
+      <div class="f-group" style="margin-bottom:12px">
+        <label class="f-label">任務名稱</label>
+        <input class="f-input" id="f-name" placeholder="e.g. 台新PAY 結帳流程測試" />
+      </div>
+      <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1.7fr 1.7fr;gap:10px;margin-bottom:12px">
+        <div class="f-group">
+          <label class="f-label">狀態</label>
+          <div class="status-sel" id="f-status-sel">
+            <div class="ss-opt active-todo" onclick="setFormStatus('todo')">未開始</div>
+            <div class="ss-opt" onclick="setFormStatus('doing')">進行中</div>
+            <div class="ss-opt" onclick="setFormStatus('done')">已完成</div>
+          </div>
+        </div>
+        <div class="f-group">
+          <label class="f-label">支付功能</label>
+          <select class="f-select" id="f-system" style="height:38px;padding:4px 10px">
+            <option value="">— 選擇 —</option>
+          </select>
+        </div>
+        <div class="f-group">
+          <label class="f-label">開始日期</label>
+          <input class="f-input" id="f-start" type="date" style="height:38px;padding:4px 10px" />
+        </div>
+        <div class="f-group">
+          <label class="f-label">結束日期</label>
+          <input class="f-input" id="f-end" type="date" style="height:38px;padding:4px 10px" />
+        </div>
+        <div class="f-group">
+          <label class="f-label">測試人員</label>
+          <div class="members-wrap" id="members-wrap" style="margin-top:2px;gap:4px">
+            <div class="member-chip" onclick="toggleMember(this,'Daniel')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Daniel</div>
+            <div class="member-chip" onclick="toggleMember(this,'JiaJie')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>JiaJie</div>
+            <div class="member-chip" onclick="toggleMember(this,'Sam')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Sam</div>
+            <div class="member-chip" onclick="toggleMember(this,'Kai')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Kai</div>
+            <div class="member-chip" onclick="toggleMember(this,'Luna')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Luna</div>
+          </div>
+        </div>
+        <div class="f-group">
+          <label class="f-label">配合窗口</label>
+          <div class="contacts-wrap" id="contacts-wrap" style="margin-top:2px;gap:4px">
+            <div class="contact-chip" onclick="toggleContact(this,'銷售組')" style="padding:3px 10px;font-size:12px">銷售組</div>
+            <div class="contact-chip" onclick="toggleContact(this,'OB票務')" style="padding:3px 10px;font-size:12px">OB票務</div>
+            <div class="contact-chip" onclick="toggleContact(this,'OB紀念品')" style="padding:3px 10px;font-size:12px">OB紀念品</div>
+            <div class="contact-chip" onclick="toggleContact(this,'商場帳務')" style="padding:3px 10px;font-size:12px">商場帳務</div>
+          </div>
+        </div>
+      </div>
+      <div class="f-group">
+        <label class="f-label">備註</label>
+        <input class="f-input" id="f-notes" placeholder="選填" />
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="addTask()">＋ 新增任務</button>
+        <button class="btn btn-outline" onclick="clearForm()">清除</button>
+      </div>
+    </div>
+
+    <div class="sec-hd"><span class="sec-title">測試任務清單</span><div class="sec-line"></div></div>
+    <div class="tasks-list" id="tasks-list">
+      <div class="empty" id="empty-state">
+        <span class="e-icon">🗂</span>
+        尚無任務，請在上方新增第一筆測試任務
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 產生測試清單 modal -->
+<div class="modal-bg" id="modal-bg" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-title">產生測試清單</div>
+    <div class="f-group" style="margin-bottom:12px">
+      <label class="f-label">任務名稱</label>
+      <input class="f-input" id="m-taskname" readonly />
+    </div>
+    <div class="f-group">
+      <label class="f-label">產出日期</label>
+      <input class="f-input" id="m-date" readonly />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeModalDirect()">取消</button>
+      <button class="btn btn-primary" onclick="doExport()">🖨 開啟列印清單</button>
+    </div>
+  </div>
+</div>
+
+<!-- 帳密卡片編輯 modal -->
+<div class="modal-bg" id="cred-modal-bg" onclick="if(event.target===this)closeCredModal()">
+  <div class="modal">
+    <div class="modal-title" id="cred-modal-title">新增帳密卡片</div>
+    <div class="f-group" style="margin-bottom:12px">
+      <label class="f-label">系統名稱</label>
+      <input class="f-input" id="cred-sysname" placeholder="例如：街口支付" />
+    </div>
+    <div class="f-group" style="margin-bottom:8px">
+      <label class="f-label">帳密欄位</label>
+    </div>
+    <div id="cred-fields-editor"></div>
+    <button class="btn btn-outline" style="margin-bottom:14px" onclick="addCredField()">＋ 新增欄位</button>
+    <div class="f-group">
+      <label class="f-label">備註（選填，例如需使用虛擬鍵盤）</label>
+      <input class="f-input" id="cred-note" placeholder="選填" />
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" style="color:var(--rust);border-color:var(--rust);margin-right:auto" id="cred-delete-btn" onclick="deleteCred()">刪除卡片</button>
+      <button class="btn btn-outline" onclick="closeCredModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveCred()">💾 儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- 備份/還原 modal -->
+<div class="modal-bg" id="backup-modal-bg" onclick="if(event.target===this)closeBackupModal()">
+  <div class="modal">
+    <div class="modal-title">備份 / 還原</div>
+    <div class="backup-bar">
+      <span id="last-backup-time-2">尚無備份紀錄</span>
+      <button class="btn btn-outline" onclick="doBackupNow('manual')">立即備份</button>
+    </div>
+    <div class="backup-list" id="backup-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeBackupModal()">關閉</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">✓ 操作成功</div>
+
+</div><!-- /app-root -->
+
+<script>
+/* ============ Firebase 初始化 ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyA-DY0Y63vN97Oqbwe-dvyDeJCHR83n6CA",
+  authDomain: "pos-test-92a0f.firebaseapp.com",
+  projectId: "pos-test-92a0f",
+  storageBucket: "pos-test-92a0f.firebasestorage.app",
+  messagingSenderId: "955393674229",
+  appId: "1:955393674229:web:d4b59faa0b154cf2cceebc"
+};
+// 共用登入帳號，需與 Firebase Authentication > Users 中建立的帳號 Email 一致
+// 若您建立帳號時使用的 Email 不同，請修改下面這一行
+const SHARED_AUTH_EMAIL = "posteam-tool@internal.local";
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
+
+/* ============ 全域狀態 ============ */
+let tasks = [];
+let credentials = [];
+let backups = [];
+let formStatus='todo', selectedMembers=[], selectedContacts=[], currentTaskId=null;
+let editingCredId=null, editingCredFields=[];
+let unsubTasks=null, unsubCreds=null, unsubBackups=null;
+let backupTimer=null;
+
+const MEMBERS=['Daniel','JiaJie','Sam','Kai','Luna'];
+const CONTACTS=['銷售組','OB票務','OB紀念品','商場帳務'];
+const OTHER_SYSTEMS=['中信刷卡','聯信刷卡','悠遊卡','現金','購物金','電子禮券','抵用券'];
+const CARD_COLORS=['#b05a3a','#4a6fa5','#5c7a6e','#8b7355','#6a5a8b','#3a8fa0','#a0673a','#7a8a3a'];
+
+function tick(){
+  const n=new Date();
+  document.getElementById('clock').textContent=n.toLocaleDateString('zh-TW')+'  '+n.toLocaleTimeString('zh-TW',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+tick();setInterval(tick,1000);
+
+/* ============ 登入 / 登出 ============ */
+function doLogin(){
+  const pw=document.getElementById('login-pw').value;
+  if(!pw){showLoginError('請輸入密碼');return;}
+  setLoginLoading(true);
+  auth.signInWithEmailAndPassword(SHARED_AUTH_EMAIL,pw)
+    .catch(()=>{setLoginLoading(false);showLoginError('密碼錯誤或登入失敗，請確認共用密碼是否正確');});
+}
+document.addEventListener('DOMContentLoaded',()=>{
+  const pwEl=document.getElementById('login-pw');
+  if(pwEl)pwEl.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+});
+function showLoginError(msg){const e=document.getElementById('login-err');e.textContent=msg;e.style.display='block';}
+function setLoginLoading(b){const btn=document.getElementById('login-btn');btn.disabled=b;btn.textContent=b?'登入中…':'登入';}
+function doLogout(){auth.signOut();}
+
+auth.onAuthStateChanged(user=>{
+  if(user){
+    document.getElementById('login-overlay').style.display='none';
+    document.getElementById('app-root').style.display='block';
+    document.getElementById('login-err').style.display='none';
+    document.getElementById('login-pw').value='';
+    setLoginLoading(false);
+    startListeners();
+  }else{
+    document.getElementById('login-overlay').style.display='flex';
+    document.getElementById('app-root').style.display='none';
+    stopListeners();
+  }
+});
+
+/* ============ Firestore 即時同步 ============ */
+function startListeners(){
+  unsubTasks=db.collection('tasks').orderBy('createdAt','desc').onSnapshot(snap=>{
+    tasks=snap.docs.map(d=>({id:d.id,...d.data()}));
+    render();
+  },err=>{console.error(err);showToast('讀取任務資料失敗，請確認 Firestore 設定','err');});
+
+  unsubCreds=db.collection('credentials').orderBy('order','asc').onSnapshot(snap=>{
+    credentials=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderCredentials();
+    populateSystemSelect();
+    render();
+  },err=>{console.error(err);showToast('讀取帳密資料失敗，請確認 Firestore 設定','err');});
+
+  unsubBackups=db.collection('backups').orderBy('createdAt','desc').limit(20).onSnapshot(snap=>{
+    backups=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderBackupInfo();
+  },err=>{console.error(err);});
+}
+function stopListeners(){
+  if(unsubTasks)unsubTasks();
+  if(unsubCreds)unsubCreds();
+  if(unsubBackups)unsubBackups();
+  unsubTasks=unsubCreds=unsubBackups=null;
+  tasks=[];credentials=[];backups=[];
+}
+
+/* ============ Tab 切換 ============ */
+function showTab(t){
+  document.getElementById('tab-creds').style.display=t==='creds'?'block':'none';
+  document.getElementById('tab-info').style.display=t==='info'?'block':'none';
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&t==='creds')||(i===1&&t==='info')));
+}
+
+/* ============ 表單狀態 ============ */
+function setFormStatus(s){
+  formStatus=s;
+  const opts=document.querySelectorAll('#f-status-sel .ss-opt');
+  opts.forEach(o=>o.className='ss-opt');
+  if(s==='todo')opts[0].className='ss-opt active-todo';
+  if(s==='doing')opts[1].className='ss-opt active-doing';
+  if(s==='done')opts[2].className='ss-opt active-done';
+}
+function toggleMember(el,name){el.classList.toggle('active');if(el.classList.contains('active'))selectedMembers.push(name);else selectedMembers=selectedMembers.filter(m=>m!==name);}
+function toggleContact(el,name){el.classList.toggle('active');if(el.classList.contains('active'))selectedContacts.push(name);else selectedContacts=selectedContacts.filter(c=>c!==name);}
+function clearForm(){
+  ['f-name','f-system','f-start','f-end','f-notes'].forEach(id=>{document.getElementById(id).value='';});
+  selectedMembers=[];selectedContacts=[];
+  document.querySelectorAll('.member-chip').forEach(c=>c.classList.remove('active'));
+  document.querySelectorAll('.contact-chip').forEach(c=>c.classList.remove('active'));
+  setFormStatus('todo');
+}
+
+function getAllSystemOptions(){
+  return [''].concat(credentials.map(c=>c.systemName)).concat(OTHER_SYSTEMS);
+}
+function populateSystemSelect(){
+  const sel=document.getElementById('f-system');
+  const cur=sel.value;
+  sel.innerHTML=getAllSystemOptions().map(s=>`<option value="${s}">${s||'— 選擇 —'}</option>`).join('');
+  sel.value=cur;
+}
+
+/* ============ 任務 CRUD（Firestore） ============ */
+function addTask(){
+  const name=document.getElementById('f-name').value.trim();
+  if(!name){showToast('請輸入任務名稱','err');return;}
+  const data={
+    name,status:formStatus,system:document.getElementById('f-system').value,
+    start:document.getElementById('f-start').value,end:document.getElementById('f-end').value,
+    members:[...selectedMembers],contacts:[...selectedContacts],
+    notes:document.getElementById('f-notes').value.trim(),
+    createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  };
+  db.collection('tasks').add(data).then(()=>{clearForm();showToast('✓ 任務已新增');scheduleBackup();})
+    .catch(e=>showToast('新增失敗：'+e.message,'err'));
+}
+
+function saveEdit(id){
+  const n=document.getElementById(`e-name-${id}`).value.trim();
+  const data={
+    system:document.getElementById(`e-sys-${id}`).value,
+    start:document.getElementById(`e-start-${id}`).value,
+    end:document.getElementById(`e-end-${id}`).value,
+    notes:document.getElementById(`e-notes-${id}`).value.trim(),
+    members:MEMBERS.filter(m=>document.getElementById(`em-${id}-${m}`)?.classList.contains('active-m')),
+    contacts:CONTACTS.filter(c=>document.getElementById(`ec-${id}-${c}`)?.classList.contains('active-c')),
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  };
+  if(n)data.name=n;
+  db.collection('tasks').doc(id).update(data).then(()=>{showToast('✓ 已儲存');scheduleBackup();})
+    .catch(e=>showToast('儲存失敗：'+e.message,'err'));
+}
+
+function deleteTask(id){
+  if(!confirm('確定刪除此任務？'))return;
+  db.collection('tasks').doc(id).delete().then(()=>{showToast('✓ 任務已刪除');scheduleBackup();})
+    .catch(e=>showToast('刪除失敗：'+e.message,'err'));
+}
+
+function changeStatus(id,s){
+  db.collection('tasks').doc(id).update({status:s,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
+    .then(()=>scheduleBackup()).catch(e=>showToast('更新失敗：'+e.message,'err'));
+}
+function setEditStatus(id,s){changeStatus(id,s);}
+
+function statusInfo(s){
+  if(s==='doing')return{color:'var(--rust)',label:'進行中'};
+  if(s==='done') return{color:'var(--sage)',label:'已完成'};
+  return{color:'var(--clay)',label:'未開始'};
+}
+
+/* ============ 任務渲染 ============ */
+function render(){
+  const list=document.getElementById('tasks-list');
+  const empty=document.getElementById('empty-state');
+  document.getElementById('st-total').textContent=tasks.length;
+  document.getElementById('st-doing').textContent=tasks.filter(t=>t.status==='doing').length;
+  document.getElementById('st-done').textContent=tasks.filter(t=>t.status==='done').length;
+  document.getElementById('st-todo').textContent=tasks.filter(t=>t.status==='todo').length;
+
+  const sbt=document.getElementById('sidebar-tasks');
+  if(sbt){
+    sbt.innerHTML=!tasks.length
+      ?'<div style="font-size:13px;color:var(--muted);text-align:center;padding:20px">尚無任務</div>'
+      :tasks.map(t=>{const si=statusInfo(t.status);return`<div class="sb-task">
+        <div class="sb-dot" style="background:${si.color}"></div>
+        <div class="sb-info"><div class="sb-name">${t.name}</div><div class="sb-meta">${t.system||'—'}　${t.start||''}${t.end?' ～ '+t.end:''}</div></div>
+        <div class="sb-btns">
+          <button class="sb-btn ${t.status==='todo'?'act-todo':''}" onclick="changeStatus('${t.id}','todo')" title="未開始">待</button>
+          <button class="sb-btn ${t.status==='doing'?'act-doing':''}" onclick="changeStatus('${t.id}','doing')" title="進行中">行</button>
+          <button class="sb-btn ${t.status==='done'?'act-done':''}" onclick="changeStatus('${t.id}','done')" title="已完成">完</button>
+        </div></div>`;}).join('');
+  }
+
+  if(!tasks.length){list.innerHTML='';list.appendChild(empty);empty.style.display='block';return;}
+  empty.style.display='none';
+
+  const sysOptions=getAllSystemOptions();
+
+  list.innerHTML=tasks.map(t=>{
+    const si=statusInfo(t.status);
+    const mChips=MEMBERS.map(m=>`<span id="em-${t.id}-${m}" class="edit-chip${(t.members||[]).includes(m)?' active-m':''}" onclick="this.classList.toggle('active-m')">${m}</span>`).join('');
+    const cChips=CONTACTS.map(c=>`<span id="ec-${t.id}-${c}" class="edit-chip${(t.contacts||[]).includes(c)?' active-c':''}" onclick="this.classList.toggle('active-c')">${c}</span>`).join('');
+    const sysOpts=sysOptions.map(s=>`<option value="${s}"${t.system===s?' selected':''}>${s||'— 選擇 —'}</option>`).join('');
+    return`
+    <div class="task-item" id="ti-${t.id}">
+      <div class="task-main">
+        <div class="task-status-bar" style="background:${si.color}"></div>
+        <div class="task-name-wrap" onclick="toggleTask('${t.id}')" style="cursor:pointer">
+          <div class="task-name">${t.name}</div>
+          <div class="task-sub">${t.system?'支付：'+t.system+'　':''} ${t.start||''}${t.end?' ～ '+t.end:''}</div>
+        </div>
+        <div class="task-meta">
+          <button class="inline-st ${t.status==='todo'?'ist-todo':''}" onclick="changeStatus('${t.id}','todo')">未開始</button>
+          <button class="inline-st ${t.status==='doing'?'ist-doing':''}" onclick="changeStatus('${t.id}','doing')">進行中</button>
+          <button class="inline-st ${t.status==='done'?'ist-done':''}" onclick="changeStatus('${t.id}','done')">已完成</button>
+          <span class="task-expand" onclick="toggleTask('${t.id}')">›</span>
+        </div>
+      </div>
+      <div class="task-detail">
+        <div class="edit-grid">
+          <div class="eg-full"><div class="edit-label">任務名稱</div><input class="edit-input" id="e-name-${t.id}" value="${(t.name||'').replace(/"/g,'&quot;')}" /></div>
+          <div><div class="edit-label">狀態</div>
+            <div class="edit-status">
+              <div id="es-${t.id}-todo" class="es-opt${t.status==='todo'?' es-todo':''}" onclick="setEditStatus('${t.id}','todo')">未開始</div>
+              <div id="es-${t.id}-doing" class="es-opt${t.status==='doing'?' es-doing':''}" onclick="setEditStatus('${t.id}','doing')">進行中</div>
+              <div id="es-${t.id}-done" class="es-opt${t.status==='done'?' es-done':''}" onclick="setEditStatus('${t.id}','done')">已完成</div>
+            </div>
+          </div>
+          <div><div class="edit-label">支付功能</div><select class="edit-select" id="e-sys-${t.id}">${sysOpts}</select></div>
+          <div><div class="edit-label">開始日期</div><input class="edit-input" id="e-start-${t.id}" type="date" value="${t.start||''}" /></div>
+          <div><div class="edit-label">結束日期</div><input class="edit-input" id="e-end-${t.id}" type="date" value="${t.end||''}" /></div>
+          <div class="eg-full"><div class="edit-label">測試人員</div><div class="edit-chips">${mChips}</div></div>
+          <div class="eg-full"><div class="edit-label">配合窗口</div><div class="edit-chips">${cChips}</div></div>
+          <div class="eg-full"><div class="edit-label">備註</div><input class="edit-input" id="e-notes-${t.id}" value="${(t.notes||'').replace(/"/g,'&quot;')}" placeholder="選填" /></div>
+        </div>
+        <div class="task-actions">
+          <button class="btn btn-primary" onclick="saveEdit('${t.id}')">💾 儲存修改</button>
+          <button class="btn btn-print" onclick="openModal('${t.id}')">📊 產生測試清單</button>
+          <button class="btn btn-outline" style="color:var(--rust);border-color:var(--rust);margin-left:auto" onclick="deleteTask('${t.id}')">刪除</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleTask(id){document.getElementById('ti-'+id).classList.toggle('open');}
+
+/* ============ 帳密卡片 CRUD（Firestore） ============ */
+function renderCredentials(){
+  const wrap=document.getElementById('creds-dynamic-wrap');
+  const cardsHtml=credentials.map((c,idx)=>{
+    const color=CARD_COLORS[idx%CARD_COLORS.length];
+    const rows=(c.fields||[]).map(f=>f.pay
+      ?`<div class="cr pay" style="border-left-color:${color};background:${color}18"><div class="cr-lbl" style="color:${color}">${f.label}</div><div class="cr-val" style="color:${color}">${f.value}<span class="pay-tag" style="background:${color}">PAY</span></div></div>`
+      :`<div class="cr"><div class="cr-lbl">${f.label}</div><div class="cr-val">${f.value}</div></div>`
+    ).join('');
+    return`<div class="cred-card">
+      <div class="cred-head">
+        <div class="cred-ico" style="background:${color}22;color:${color}">${(c.systemName||'?').slice(0,1)}</div>
+        <h3 style="color:${color};flex:1">${c.systemName}</h3>
+        <button class="cred-edit-btn" onclick="openCredModal('${c.id}')" title="編輯">✎</button>
+      </div>
+      <div class="cred-body">${rows||'<div style="padding:10px 15px;font-size:12px;color:var(--muted)">尚無欄位</div>'}</div>
+      ${c.note?`<div class="cred-note">${c.note}</div>`:''}
+    </div>`;
+  }).join('');
+  wrap.innerHTML=cardsHtml+`<button class="btn btn-outline" style="width:100%" onclick="openCredModal(null)">＋ 新增帳密卡片</button>`;
+}
+
+function openCredModal(id){
+  editingCredId=id;
+  const c=id?credentials.find(c=>c.id===id):null;
+  document.getElementById('cred-modal-title').textContent=c?'編輯帳密卡片':'新增帳密卡片';
+  document.getElementById('cred-sysname').value=c?c.systemName:'';
+  document.getElementById('cred-note').value=c?(c.note||''):'';
+  editingCredFields=c?JSON.parse(JSON.stringify(c.fields||[])):[{label:'',value:'',pay:false}];
+  renderCredFieldsEditor();
+  document.getElementById('cred-delete-btn').style.display=c?'inline-block':'none';
+  document.getElementById('cred-modal-bg').classList.add('open');
+}
+function closeCredModal(){document.getElementById('cred-modal-bg').classList.remove('open');}
+
+function renderCredFieldsEditor(){
+  const wrap=document.getElementById('cred-fields-editor');
+  wrap.innerHTML=editingCredFields.map((f,i)=>`
+    <div class="cred-field-row">
+      <input class="edit-input" placeholder="欄位名稱 (如:帳號)" value="${(f.label||'').replace(/"/g,'&quot;')}" oninput="editingCredFields[${i}].label=this.value">
+      <input class="edit-input" placeholder="值" value="${(f.value||'').replace(/"/g,'&quot;')}" oninput="editingCredFields[${i}].value=this.value">
+      <label class="cred-pay-check"><input type="checkbox" ${f.pay?'checked':''} onchange="editingCredFields[${i}].pay=this.checked">主付款碼</label>
+      <button class="field-del-btn" onclick="removeCredField(${i})">✕</button>
+    </div>`).join('');
+}
+function addCredField(){editingCredFields.push({label:'',value:'',pay:false});renderCredFieldsEditor();}
+function removeCredField(i){editingCredFields.splice(i,1);renderCredFieldsEditor();}
+
+function saveCred(){
+  const sysname=document.getElementById('cred-sysname').value.trim();
+  if(!sysname){showToast('請輸入系統名稱','err');return;}
+  const note=document.getElementById('cred-note').value.trim();
+  const fields=editingCredFields.filter(f=>(f.label||'').trim()||(f.value||'').trim());
+  const data={systemName:sysname,note,fields,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  if(editingCredId){
+    db.collection('credentials').doc(editingCredId).update(data)
+      .then(()=>{closeCredModal();showToast('✓ 已更新');scheduleBackup();})
+      .catch(e=>showToast('更新失敗：'+e.message,'err'));
+  }else{
+    data.order=credentials.length;
+    data.createdAt=firebase.firestore.FieldValue.serverTimestamp();
+    db.collection('credentials').add(data)
+      .then(()=>{closeCredModal();showToast('✓ 已新增');scheduleBackup();})
+      .catch(e=>showToast('新增失敗：'+e.message,'err'));
+  }
+}
+function deleteCred(){
+  if(!editingCredId)return;
+  if(!confirm('確定刪除此帳密卡片？'))return;
+  db.collection('credentials').doc(editingCredId).delete()
+    .then(()=>{closeCredModal();showToast('✓ 已刪除');scheduleBackup();})
+    .catch(e=>showToast('刪除失敗：'+e.message,'err'));
+}
+
+/* ============ 備份 / 還原（Firestore） ============ */
+function scheduleBackup(){
+  clearTimeout(backupTimer);
+  backupTimer=setTimeout(()=>doBackupNow('auto'),5000);
+}
+function doBackupNow(trigger){
+  trigger=trigger||'manual';
+  const snapshot={
+    credentials:credentials.map(({id,...rest})=>rest),
+    tasks:tasks.map(({id,...rest})=>rest)
+  };
+  db.collection('backups').add({
+    snapshot:JSON.stringify(snapshot),trigger,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(()=>{if(trigger==='manual')showToast('✓ 已手動備份');})
+    .catch(e=>{console.error('備份失敗',e);if(trigger==='manual')showToast('備份失敗：'+e.message,'err');});
+}
+function renderBackupInfo(){
+  const label=(()=>{
+    if(!backups.length||!backups[0].createdAt)return'尚無備份紀錄';
+    const d=backups[0].createdAt.toDate();
+    return'最後備份時間：'+d.toLocaleString('zh-TW');
+  })();
+  const t1=document.getElementById('last-backup-time');if(t1)t1.textContent=label;
+  const t2=document.getElementById('last-backup-time-2');if(t2)t2.textContent=label;
+
+  const listEl=document.getElementById('backup-list');
+  if(listEl){
+    listEl.innerHTML=backups.length?backups.map(b=>{
+      const d=b.createdAt?b.createdAt.toDate().toLocaleString('zh-TW'):'—';
+      return`<div class="backup-row"><span>${d}　<span style="color:var(--muted);font-size:10px">(${b.trigger==='auto'?'自動':'手動'})</span></span><button class="btn btn-outline" style="padding:4px 10px;font-size:11px" onclick="restoreBackup('${b.id}')">還原</button></div>`;
+    }).join(''):'<div style="color:var(--muted);font-size:12px;padding:8px 2px">尚無備份紀錄</div>';
+  }
+}
+function openBackupModal(){document.getElementById('backup-modal-bg').classList.add('open');}
+function closeBackupModal(){document.getElementById('backup-modal-bg').classList.remove('open');}
+
+function restoreBackup(id){
+  const b=backups.find(b=>b.id===id);if(!b)return;
+  if(!confirm('還原將覆蓋目前所有帳密與任務資料，確定繼續？'))return;
+  let snap;
+  try{snap=JSON.parse(b.snapshot);}catch(e){showToast('備份資料損毀','err');return;}
+  Promise.all([db.collection('tasks').get(),db.collection('credentials').get()]).then(([tSnap,cSnap])=>{
+    const batch=db.batch();
+    tSnap.forEach(d=>batch.delete(d.ref));
+    cSnap.forEach(d=>batch.delete(d.ref));
+    (snap.tasks||[]).forEach(t=>{const ref=db.collection('tasks').doc();batch.set(ref,t);});
+    (snap.credentials||[]).forEach(c=>{const ref=db.collection('credentials').doc();batch.set(ref,c);});
+    return batch.commit();
+  }).then(()=>{closeBackupModal();showToast('✓ 已還原備份');})
+    .catch(e=>showToast('還原失敗：'+e.message,'err'));
+}
+
+/* ============ 測試清單匯出 ============ */
+function openModal(id){
+  currentTaskId=id;
+  const t=tasks.find(t=>t.id===id);if(!t)return;
+  document.getElementById('m-taskname').value=t.name;
+  document.getElementById('m-date').value=new Date().toLocaleDateString('zh-TW');
+  document.getElementById('modal-bg').classList.add('open');
+}
+function closeModal(e){if(e.target===document.getElementById('modal-bg'))closeModalDirect();}
+function closeModalDirect(){document.getElementById('modal-bg').classList.remove('open');}
+
+function buildCredStripHtml(systemName){
+  if(OTHER_SYSTEMS.includes(systemName)){
+    return'<div style="font-size:12px;color:#9b9289;padding:8px">此支付方式無需帳密資料</div>';
+  }
+  const idx=credentials.findIndex(c=>c.systemName===systemName);
+  const c=idx>=0?credentials[idx]:null;
+  if(!c)return'<div style="font-size:12px;color:#9b9289;padding:8px">（無對應帳密資料）</div>';
+  const color=CARD_COLORS[idx%CARD_COLORS.length];
+  const rows=(c.fields||[]).map(f=>`<div class="cred-row"><span class="cred-key">${f.label}</span><span class="cred-val${f.pay?' pay':''}">${f.value}</span></div>`).join('');
+  return`<div class="cred-pill"><div class="cred-pill-head" style="background:${color}">${c.systemName}</div><div class="cred-pill-body">${rows}</div></div>`;
+}
+
+function doExport(){
+  const t=tasks.find(t=>t.id===currentTaskId);if(!t)return;
+  const today=new Date().toLocaleDateString('zh-TW');
+  const si=statusInfo(t.status);
+  const systemName=t.system||'新支付';
+  const items=getVerifyItems(systemName);
+  const rowsHtml=items.map((item,i)=>{
+    const isRefund=item.label.startsWith('當日退')||item.label.startsWith('隔日退')||item.label.startsWith('退貨');
+    const isCustom=item.isCustom;
+    const labelHtml=item.label.replace(/新支付/g,`<strong>${systemName}</strong>`);
+    const cv=v=>v==='無後台'?'no-back':v==='-'?'dash':'';
+    const pv=v=>v!==undefined?v:'';
+    return`<tr class="${isCustom?'row-custom':isRefund?'row-refund':'row-sale'}">
+      <td class="td-no">${isCustom?'':i+1}</td>
+      <td class="td-item">${isCustom?'<span class="custom-label">其他測試案例（可自行填寫）</span>':labelHtml}${item.note?`<span class="item-note">${item.note}</span>`:''}</td>
+      <td class="${cv(pv(item.pos))}">${pv(item.pos)}</td><td class="${cv(pv(item.mpos))}">${pv(item.mpos)}</td>
+      <td class="${cv(pv(item.tpos))}">${pv(item.tpos)}</td><td class="${cv(pv(item.kpos))}">${pv(item.kpos)}</td>
+      <td class="td-result"></td><td class="td-tester"></td><td class="td-note"></td></tr>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8"><title>${t.name} 測試清單</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans TC',sans-serif;background:#f5f3ef;color:#2c2825;font-size:12px}
+@media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}.page{box-shadow:none;margin:0;border-radius:0;padding:13mm 12mm}@page{size:A4 portrait;margin:0}}
+.no-print{position:fixed;top:16px;right:16px;z-index:99;display:flex;gap:8px}
+.btn-print{background:#5c7a6e;color:#fff;border:none;padding:10px 22px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans TC',sans-serif}
+.btn-close{background:#fff;color:#5a5450;border:1px solid #cdc7bc;padding:10px 18px;border-radius:7px;font-size:13px;cursor:pointer;font-family:'Noto Sans TC',sans-serif}
+.page{max-width:210mm;margin:20px auto;background:#fff;box-shadow:0 4px 32px rgba(44,40,37,.1);border-radius:10px;padding:15mm 13mm 12mm}
+.report-header{border:1.5px solid #5c7a6e;border-radius:8px;overflow:hidden;margin-bottom:14px;display:flex}
+.header-accent{width:7px;background:linear-gradient(180deg,#5c7a6e,#a8c4bb);flex-shrink:0}
+.header-body{flex:1;padding:12px 16px}
+.report-title{font-family:'Noto Serif TC',serif;font-size:19px;font-weight:700;color:#2c2825;margin-bottom:6px}
+.report-title span{font-family:'DM Mono',monospace;font-size:10px;background:#5c7a6e;color:#fff;padding:2px 8px;border-radius:3px;vertical-align:middle;margin-left:10px;letter-spacing:.1em}
+.header-meta{display:flex;flex-wrap:wrap;gap:5px 18px;margin-top:6px}
+.meta-item{display:flex;align-items:center;gap:5px;font-size:11px}
+.meta-label{background:#eef3f1;color:#5c7a6e;font-weight:600;padding:1px 7px;border-radius:3px;font-size:10px;white-space:nowrap}
+.creds-strip{display:flex;gap:8px;margin-bottom:13px;flex-wrap:wrap}
+.cred-pill{border-radius:7px;overflow:hidden;border:1px solid #e2ddd6;min-width:160px}
+.cred-pill-head{padding:6px 11px;font-size:10px;font-weight:700;letter-spacing:.06em;color:#fff}
+.cred-pill-body{padding:8px 11px;background:#faf9f6}
+.cred-row{display:flex;justify-content:space-between;align-items:baseline;padding:2px 0;border-bottom:1px dashed #ede9e3}
+.cred-row:last-child{border-bottom:none}
+.cred-key{font-size:9px;color:#7a7068}
+.cred-val{font-family:'DM Mono',monospace;font-size:12px;font-weight:500;color:#2c2825}
+.cred-val.pay{font-size:16px;font-weight:700;color:#b05a3a;background:#fdf5ec;padding:0 5px;border-radius:3px}
+.table-wrap{border-radius:7px;overflow:hidden;border:1.5px solid #a8c4bb}
+table{width:100%;border-collapse:collapse}
+thead tr{background:#5c7a6e}
+thead th{color:#fff;font-weight:600;font-size:10px;padding:8px 6px;text-align:center;letter-spacing:.04em;border-right:1px solid #6d8c80}
+thead th:last-child{border-right:none}
+thead th.th-item{text-align:left;padding-left:10px}
+.col-no{width:24px}.col-pos{width:52px}.col-result{width:42px}.col-tester{width:52px}.col-note{width:68px}
+tbody tr{border-bottom:1px solid #ede9e3}
+tbody td{padding:6px;text-align:center;font-size:11px;vertical-align:middle}
+tbody td.td-no{color:#9b9289;font-family:'DM Mono',monospace;font-size:10px}
+tbody td.td-item{text-align:left;padding-left:10px;line-height:1.5}
+tbody td.td-result{background:#faf5e8}
+tbody td.td-tester{background:#f5f8f7}
+tbody td.td-note{background:#faf9f6}
+.row-sale{background:#fff}.row-sale:nth-child(even){background:#f9f8f6}
+.row-refund{background:#fdf8f6}.row-custom{background:#faf8f0}
+td.no-back{background:#fdf0ec;color:#b05a3a;font-weight:700;font-size:10px}
+td.dash{background:#f5f3ef;color:#c5bfb8}
+.item-note{display:block;font-size:9px;color:#b05a3a;background:#fdf0ec;border-radius:2px;padding:1px 5px;margin-top:2px;width:fit-content}
+.custom-label{color:#8b7355;font-style:italic}
+.row-sale td.td-item::before{content:'銷';display:inline-block;background:#5c7a6e;color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.row-refund td.td-item::before{content:'退';display:inline-block;background:#b05a3a;color:#fff;font-size:8px;font-weight:700;padding:1px 4px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.row-custom td.td-item::before{content:none}
+.report-footer{margin-top:11px;display:flex;justify-content:space-between;align-items:flex-end;padding-top:8px;border-top:1px solid #e2ddd6}
+.legend{display:flex;gap:10px;flex-wrap:wrap}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:10px;color:#5a5450}
+.legend-dot{width:14px;height:14px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700}
+.doc-id{font-family:'DM Mono',monospace;font-size:9px;color:#9b9289}
+</style></head><body>
+<div class="no-print">
+  <button class="btn-close" onclick="window.close()">✕ 關閉</button>
+  <button class="btn-print" onclick="window.print()">🖨 列印 / 儲存 PDF</button>
+</div>
+<div class="page">
+  <div class="report-header">
+    <div class="header-accent"></div>
+    <div class="header-body">
+      <div class="report-title">${t.name} 測試清單 <span>TEST CHECKLIST</span></div>
+      <div class="header-meta">
+        <div class="meta-item"><span class="meta-label">日期</span><span>${today}</span></div>
+        <div class="meta-item"><span class="meta-label">支付</span><span>${t.system||'—'}</span></div>
+        <div class="meta-item"><span class="meta-label">期間</span><span>${t.start||'—'} ～ ${t.end||'—'}</span></div>
+        <div class="meta-item"><span class="meta-label">測試人員</span><span>${(t.members||[]).join('、')||'—'}</span></div>
+        <div class="meta-item"><span class="meta-label">配合窗口</span><span>${(t.contacts||[]).join('、')||'—'}</span></div>
+        <div class="meta-item"><span class="meta-label">狀態</span><span>${si.label}</span></div>
+        ${t.notes?`<div class="meta-item"><span class="meta-label">備註</span><span>${t.notes}</span></div>`:''}
+      </div>
+    </div>
+  </div>
+  <div class="creds-strip">${buildCredStripHtml(t.system)}</div>
+  <div class="table-wrap"><table>
+    <colgroup><col class="col-no"><col><col class="col-pos"><col class="col-pos"><col class="col-pos"><col class="col-pos"><col class="col-result"><col class="col-tester"><col class="col-note"></colgroup>
+    <thead><tr><th class="col-no">#</th><th class="th-item">驗證項目 / 機台</th><th>商場POS</th><th>MPOS</th><th>票務人工POS</th><th>紀念品POS</th><th>結果</th><th>測試人員</th><th>備註</th></tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table></div>
+  <div class="report-footer">
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#eef3f1;color:#5c7a6e;border:1px solid #a8c4bb">○</div> Pass</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#fdf0ec;color:#b05a3a;border:1px solid #d4a090">✕</div> Fail</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#faf5e8;color:#8b7355;border:1px solid #c8b89a">△</div> 部分通過</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#f5f3ef;color:#9b9289;border:1px solid #cdc7bc">—</div> 跳過</div>
+      <div class="legend-item" style="margin-left:6px;padding-left:6px;border-left:1px solid #e2ddd6"><div class="legend-dot" style="background:#5c7a6e;color:#fff;font-size:7px">銷</div> 銷售</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#b05a3a;color:#fff;font-size:7px">退</div> 退款</div>
+    </div>
+    <div class="doc-id">產出：${today} · TEST ENV</div>
+  </div>
+</div></body></html>`;
+  const win=window.open('','_blank');win.document.write(html);win.document.close();
+  closeModalDirect();showToast('✓ 列印清單已開啟');
+}
+
+function getVerifyItems(system){
+  if(OTHER_SYSTEMS.includes(system)){
+    return[
+      {label:'銷售'},{label:'退貨'},{label:'多重支付'},{label:'隔日退貨'},
+      {label:'會員登錄'},{label:'外交官交易'},
+      {label:'',isCustom:true},{label:'',isCustom:true},{label:'',isCustom:true},
+    ];
+  }
+  const base=[
+    {label:'銷售：新支付 100元'},{label:'當日退：新支付 100元'},
+    {label:'銷售：新支付 10+現金50'},{label:'當日退：新支付 10+現金50'},
+    {label:'銷售：新支付 10+LINEPAY 50'},{label:'當日退：新支付 10+ LINEPAY 50'},
+    {label:'銷售：新支付 50元+電子禮券 50元'},{label:'當日退：新支付 50元+電子禮券 50元'},
+    {label:'銷售：新支付 50元+電子禮券 50元（需人工後台退款）',pos:'無後台',mpos:'-',tpos:'-',kpos:'-',note:'需人工後台操作'},
+    {label:'銷售：新支付 50+點數100點(25元)'},{label:'當日退：新支付 50+點數100點(25元)'},
+    {label:'銷售：新支付 1元'},{label:'隔日退：新支付 1元'},
+    {label:'',isCustom:true},{label:'',isCustom:true},{label:'',isCustom:true},
+  ];
+  if(system==='GLNPAY'){base.splice(-3,0,{label:'虛擬鍵盤輸入密碼',note:'需使用畫面上鍵盤，不可直接鍵入'},{label:'國家選擇 Taiwan',note:'下拉選單確認顯示正確'});}
+  if(system==='台新PAY'){base.splice(-3,0,{label:'裝置綁定驗證 (000000)',note:'綁定完成後方可付款'},{label:'OTP 驗證 (123456)',note:''});}
+  return base;
+}
+
+function showToast(msg,type){
+  const el=document.getElementById('toast');
+  el.textContent=msg;el.className='toast'+(type==='err'?' err':'');
+  el.classList.add('show');setTimeout(()=>el.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>
