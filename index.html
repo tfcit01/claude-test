@@ -34,12 +34,15 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .tb-btn:hover{border-color:var(--sage);color:var(--sage)}
 
 .layout{display:grid;grid-template-columns:1fr}
-@media(min-width:960px){.layout{grid-template-columns:320px 1fr}}
+@media(min-width:960px){.layout{grid-template-columns:210px 1fr}}
 
-.sidebar{background:var(--sidebar);border-right:1px solid var(--border);min-height:calc(100vh - 53px)}
-.tab-nav{display:flex;border-bottom:1px solid var(--border)}
-.tab-btn{flex:1;padding:13px 8px;border:none;cursor:pointer;background:transparent;color:var(--muted);font-family:var(--sans);font-size:13px;border-bottom:2px solid transparent;transition:.2s}
-.tab-btn.active{color:var(--sage);border-bottom-color:var(--sage);font-weight:600}
+.sidebar{background:var(--sidebar);border-right:1px solid var(--border);min-height:calc(100vh - 53px);display:flex;flex-direction:column;justify-content:space-between}
+.side-nav{display:flex;flex-direction:column;padding:14px 10px}
+.side-nav-item{display:flex;align-items:center;gap:9px;padding:11px 12px;border:none;border-radius:8px;background:transparent;color:var(--ink2);font-family:var(--sans);font-size:13.5px;font-weight:500;cursor:pointer;text-align:left;transition:.15s;margin-bottom:3px}
+.side-nav-item:hover{background:var(--panel);color:var(--ink)}
+.side-nav-item.active{background:var(--sage-lt);color:var(--sage);font-weight:700}
+.sni-ico{font-size:14px;width:18px;text-align:center;flex-shrink:0}
+.side-info{padding:14px 18px;border-top:1px solid var(--border);font-family:var(--mono);font-size:10px;color:var(--muted);line-height:1.9}
 
 .creds-panel{padding:18px}
 
@@ -223,116 +226,133 @@ a{color:var(--sage);font-size:11px}
   <div class="topbar-right">
     <div class="live-dot"></div>
     <span id="clock"></span>
-    <button class="tb-btn" onclick="openBackupModal()">🗂 備份/還原</button>
     <button class="tb-btn" onclick="doLogout()">登出</button>
   </div>
 </div>
 
 <div class="layout">
   <div class="sidebar">
-    <div class="tab-nav">
-      <button class="tab-btn active" onclick="showTab('creds')">帳密資料</button>
-      <button class="tab-btn" onclick="showTab('info')">任務總覽</button>
-    </div>
-
-    <div id="tab-creds" class="creds-panel">
-      <div id="creds-dynamic-wrap"><div style="text-align:center;color:var(--muted);font-size:12px;padding:20px">載入中…</div></div>
-    </div>
-
-    <div id="tab-info" class="creds-panel" style="display:none">
-      <div class="info-bar">
-        <span><b>ENV</b>　TEST / UAT</span>
-        <span style="width:1px;height:14px;background:var(--border);display:inline-block"></span>
-        <span><b>VER</b>　v2.0.0 (Firebase)</span>
-        <span style="width:1px;height:14px;background:var(--border);display:inline-block"></span>
-        <span>INTERNAL ONLY</span>
-      </div>
-      <div class="sidebar-sec" style="margin-top:0">所有測試任務</div>
-      <div id="sidebar-tasks"></div>
-      <div class="sidebar-sec">資料備份</div>
-      <div class="info-bar" style="flex-direction:column;align-items:flex-start;gap:8px">
-        <span id="last-backup-time">尚無備份紀錄</span>
-        <button class="tb-btn" onclick="doBackupNow('manual')">立即備份</button>
-      </div>
+    <nav class="side-nav">
+      <button class="side-nav-item active" id="nav-overview" onclick="showView('overview')"><span class="sni-ico">📋</span>任務總覽</button>
+      <button class="side-nav-item" id="nav-newtask" onclick="showView('newtask')"><span class="sni-ico">＋</span>新增測試任務</button>
+      <button class="side-nav-item" id="nav-creds" onclick="showView('creds')"><span class="sni-ico">🔑</span>帳密資料</button>
+      <button class="side-nav-item" id="nav-backup" onclick="showView('backup')"><span class="sni-ico">🗂</span>資料備份</button>
+      <button class="side-nav-item" id="nav-sample" onclick="showView('sample')"><span class="sni-ico">🧪</span>驗證樣本</button>
+    </nav>
+    <div class="side-info">
+      <div>ENV：TEST / UAT</div>
+      <div>VER：v2.1.0（Firebase）</div>
+      <div>INTERNAL ONLY</div>
     </div>
   </div>
 
   <div class="main">
-    <div class="stats" id="stats">
-      <div class="stat-box"><div class="stat-num c-sage" id="st-total">0</div><div class="stat-lbl">TOTAL</div></div>
-      <div class="stat-box"><div class="stat-num c-rust" id="st-doing">0</div><div class="stat-lbl">DOING</div></div>
-      <div class="stat-box"><div class="stat-num c-sage" id="st-done">0</div><div class="stat-lbl">DONE</div></div>
-      <div class="stat-box"><div class="stat-num c-clay" id="st-todo">0</div><div class="stat-lbl">TODO</div></div>
-    </div>
 
-    <div class="sec-hd"><span class="sec-title">新增測試任務</span><div class="sec-line"></div></div>
-
-    <div class="task-form">
-      <div class="form-sub">// NEW TASK</div>
-      <div class="f-group" style="margin-bottom:12px">
-        <label class="f-label">任務名稱</label>
-        <input class="f-input" id="f-name" placeholder="e.g. 台新PAY 結帳流程測試" />
+    <!-- ① 任務總覽 -->
+    <div class="view-panel" id="view-overview">
+      <div class="stats" id="stats">
+        <div class="stat-box"><div class="stat-num c-sage" id="st-total">0</div><div class="stat-lbl">TOTAL</div></div>
+        <div class="stat-box"><div class="stat-num c-rust" id="st-doing">0</div><div class="stat-lbl">DOING</div></div>
+        <div class="stat-box"><div class="stat-num c-sage" id="st-done">0</div><div class="stat-lbl">DONE</div></div>
+        <div class="stat-box"><div class="stat-num c-clay" id="st-todo">0</div><div class="stat-lbl">TODO</div></div>
       </div>
-      <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1.7fr 1.7fr;gap:10px;margin-bottom:12px">
-        <div class="f-group">
-          <label class="f-label">狀態</label>
-          <div class="status-sel" id="f-status-sel">
-            <div class="ss-opt active-todo" onclick="setFormStatus('todo')">未開始</div>
-            <div class="ss-opt" onclick="setFormStatus('doing')">進行中</div>
-            <div class="ss-opt" onclick="setFormStatus('done')">已完成</div>
-          </div>
+      <div class="sec-hd"><span class="sec-title">測試任務清單</span><div class="sec-line"></div></div>
+      <div class="tasks-list" id="tasks-list">
+        <div class="empty" id="empty-state">
+          <span class="e-icon">🗂</span>
+          尚無任務，請至「新增測試任務」建立第一筆測試任務
         </div>
-        <div class="f-group">
-          <label class="f-label">支付功能</label>
-          <select class="f-select" id="f-system" style="height:38px;padding:4px 10px">
-            <option value="">— 選擇 —</option>
-          </select>
-        </div>
-        <div class="f-group">
-          <label class="f-label">開始日期</label>
-          <input class="f-input" id="f-start" type="date" style="height:38px;padding:4px 10px" />
-        </div>
-        <div class="f-group">
-          <label class="f-label">結束日期</label>
-          <input class="f-input" id="f-end" type="date" style="height:38px;padding:4px 10px" />
-        </div>
-        <div class="f-group">
-          <label class="f-label">測試人員</label>
-          <div class="members-wrap" id="members-wrap" style="margin-top:2px;gap:4px">
-            <div class="member-chip" onclick="toggleMember(this,'Daniel')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Daniel</div>
-            <div class="member-chip" onclick="toggleMember(this,'JiaJie')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>JiaJie</div>
-            <div class="member-chip" onclick="toggleMember(this,'Sam')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Sam</div>
-            <div class="member-chip" onclick="toggleMember(this,'Kai')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Kai</div>
-            <div class="member-chip" onclick="toggleMember(this,'Luna')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Luna</div>
-          </div>
-        </div>
-        <div class="f-group">
-          <label class="f-label">配合窗口</label>
-          <div class="contacts-wrap" id="contacts-wrap" style="margin-top:2px;gap:4px">
-            <div class="contact-chip" onclick="toggleContact(this,'銷售組')" style="padding:3px 10px;font-size:12px">銷售組</div>
-            <div class="contact-chip" onclick="toggleContact(this,'OB票務')" style="padding:3px 10px;font-size:12px">OB票務</div>
-            <div class="contact-chip" onclick="toggleContact(this,'OB紀念品')" style="padding:3px 10px;font-size:12px">OB紀念品</div>
-            <div class="contact-chip" onclick="toggleContact(this,'商場帳務')" style="padding:3px 10px;font-size:12px">商場帳務</div>
-          </div>
-        </div>
-      </div>
-      <div class="f-group">
-        <label class="f-label">備註</label>
-        <input class="f-input" id="f-notes" placeholder="選填" />
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-primary" onclick="addTask()">＋ 新增任務</button>
-        <button class="btn btn-outline" onclick="clearForm()">清除</button>
       </div>
     </div>
 
-    <div class="sec-hd"><span class="sec-title">測試任務清單</span><div class="sec-line"></div></div>
-    <div class="tasks-list" id="tasks-list">
-      <div class="empty" id="empty-state">
-        <span class="e-icon">🗂</span>
-        尚無任務，請在上方新增第一筆測試任務
+    <!-- ② 新增測試任務 -->
+    <div class="view-panel" id="view-newtask" style="display:none">
+      <div class="sec-hd"><span class="sec-title">新增測試任務</span><div class="sec-line"></div></div>
+      <div class="task-form">
+        <div class="form-sub">// NEW TASK</div>
+        <div class="f-group" style="margin-bottom:12px">
+          <label class="f-label">任務名稱</label>
+          <input class="f-input" id="f-name" placeholder="e.g. 台新PAY 結帳流程測試" />
+        </div>
+        <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1.7fr 1.7fr;gap:10px;margin-bottom:12px">
+          <div class="f-group">
+            <label class="f-label">狀態</label>
+            <div class="status-sel" id="f-status-sel">
+              <div class="ss-opt active-todo" onclick="setFormStatus('todo')">未開始</div>
+              <div class="ss-opt" onclick="setFormStatus('doing')">進行中</div>
+              <div class="ss-opt" onclick="setFormStatus('done')">已完成</div>
+            </div>
+          </div>
+          <div class="f-group">
+            <label class="f-label">支付功能</label>
+            <select class="f-select" id="f-system" style="height:38px;padding:4px 10px">
+              <option value="">— 選擇 —</option>
+            </select>
+          </div>
+          <div class="f-group">
+            <label class="f-label">開始日期</label>
+            <input class="f-input" id="f-start" type="date" style="height:38px;padding:4px 10px" />
+          </div>
+          <div class="f-group">
+            <label class="f-label">結束日期</label>
+            <input class="f-input" id="f-end" type="date" style="height:38px;padding:4px 10px" />
+          </div>
+          <div class="f-group">
+            <label class="f-label">測試人員</label>
+            <div class="members-wrap" id="members-wrap" style="margin-top:2px;gap:4px">
+              <div class="member-chip" onclick="toggleMember(this,'Daniel')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Daniel</div>
+              <div class="member-chip" onclick="toggleMember(this,'JiaJie')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>JiaJie</div>
+              <div class="member-chip" onclick="toggleMember(this,'Sam')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Sam</div>
+              <div class="member-chip" onclick="toggleMember(this,'Kai')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Kai</div>
+              <div class="member-chip" onclick="toggleMember(this,'Luna')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Luna</div>
+            </div>
+          </div>
+          <div class="f-group">
+            <label class="f-label">配合窗口</label>
+            <div class="contacts-wrap" id="contacts-wrap" style="margin-top:2px;gap:4px">
+              <div class="contact-chip" onclick="toggleContact(this,'銷售組')" style="padding:3px 10px;font-size:12px">銷售組</div>
+              <div class="contact-chip" onclick="toggleContact(this,'OB票務')" style="padding:3px 10px;font-size:12px">OB票務</div>
+              <div class="contact-chip" onclick="toggleContact(this,'OB紀念品')" style="padding:3px 10px;font-size:12px">OB紀念品</div>
+              <div class="contact-chip" onclick="toggleContact(this,'商場帳務')" style="padding:3px 10px;font-size:12px">商場帳務</div>
+            </div>
+          </div>
+        </div>
+        <div class="f-group">
+          <label class="f-label">備註</label>
+          <input class="f-input" id="f-notes" placeholder="選填" />
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="addTask()">＋ 新增任務</button>
+          <button class="btn btn-outline" onclick="clearForm()">清除</button>
+        </div>
       </div>
     </div>
+
+    <!-- ③ 帳密資料 -->
+    <div class="view-panel" id="view-creds" style="display:none">
+      <div class="sec-hd"><span class="sec-title">帳密資料</span><div class="sec-line"></div></div>
+      <div id="creds-dynamic-wrap"><div style="text-align:center;color:var(--muted);font-size:12px;padding:20px">載入中…</div></div>
+    </div>
+
+    <!-- ④ 資料備份 -->
+    <div class="view-panel" id="view-backup" style="display:none">
+      <div class="sec-hd"><span class="sec-title">資料備份</span><div class="sec-line"></div></div>
+      <div class="backup-bar" style="margin-bottom:14px">
+        <span id="last-backup-time">尚無備份紀錄</span>
+        <button class="btn btn-outline" onclick="doBackupNow('manual')">立即備份</button>
+      </div>
+      <div class="backup-list" id="backup-list" style="max-height:none"></div>
+    </div>
+
+    <!-- ⑤ 驗證樣本（待開發） -->
+    <div class="view-panel" id="view-sample" style="display:none">
+      <div class="sec-hd"><span class="sec-title">驗證樣本</span><div class="sec-line"></div></div>
+      <div class="empty">
+        <span class="e-icon">🧪</span>
+        待開發
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -380,20 +400,6 @@ a{color:var(--sage);font-size:11px}
   </div>
 </div>
 
-<!-- 備份/還原 modal -->
-<div class="modal-bg" id="backup-modal-bg" onclick="if(event.target===this)closeBackupModal()">
-  <div class="modal">
-    <div class="modal-title">備份 / 還原</div>
-    <div class="backup-bar">
-      <span id="last-backup-time-2">尚無備份紀錄</span>
-      <button class="btn btn-outline" onclick="doBackupNow('manual')">立即備份</button>
-    </div>
-    <div class="backup-list" id="backup-list"></div>
-    <div class="modal-actions">
-      <button class="btn btn-outline" onclick="closeBackupModal()">關閉</button>
-    </div>
-  </div>
-</div>
 
 <div class="toast" id="toast">✓ 操作成功</div>
 
@@ -496,11 +502,15 @@ function stopListeners(){
   tasks=[];credentials=[];backups=[];
 }
 
-/* ============ Tab 切換 ============ */
-function showTab(t){
-  document.getElementById('tab-creds').style.display=t==='creds'?'block':'none';
-  document.getElementById('tab-info').style.display=t==='info'?'block':'none';
-  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',(i===0&&t==='creds')||(i===1&&t==='info')));
+/* ============ 導覽切換 ============ */
+const VIEWS=['overview','newtask','creds','backup','sample'];
+function showView(v){
+  VIEWS.forEach(name=>{
+    const panel=document.getElementById('view-'+name);
+    if(panel)panel.style.display=name===v?'block':'none';
+    const nav=document.getElementById('nav-'+name);
+    if(nav)nav.classList.toggle('active',name===v);
+  });
 }
 
 /* ============ 表單狀態 ============ */
@@ -590,20 +600,6 @@ function render(){
   document.getElementById('st-doing').textContent=tasks.filter(t=>t.status==='doing').length;
   document.getElementById('st-done').textContent=tasks.filter(t=>t.status==='done').length;
   document.getElementById('st-todo').textContent=tasks.filter(t=>t.status==='todo').length;
-
-  const sbt=document.getElementById('sidebar-tasks');
-  if(sbt){
-    sbt.innerHTML=!tasks.length
-      ?'<div style="font-size:13px;color:var(--muted);text-align:center;padding:20px">尚無任務</div>'
-      :tasks.map(t=>{const si=statusInfo(t.status);return`<div class="sb-task">
-        <div class="sb-dot" style="background:${si.color}"></div>
-        <div class="sb-info"><div class="sb-name">${t.name}</div><div class="sb-meta">${t.system||'—'}　${t.start||''}${t.end?' ～ '+t.end:''}</div></div>
-        <div class="sb-btns">
-          <button class="sb-btn ${t.status==='todo'?'act-todo':''}" onclick="changeStatus('${t.id}','todo')" title="未開始">待</button>
-          <button class="sb-btn ${t.status==='doing'?'act-doing':''}" onclick="changeStatus('${t.id}','doing')" title="進行中">行</button>
-          <button class="sb-btn ${t.status==='done'?'act-done':''}" onclick="changeStatus('${t.id}','done')" title="已完成">完</button>
-        </div></div>`;}).join('');
-  }
 
   if(!tasks.length){list.innerHTML='';list.appendChild(empty);empty.style.display='block';return;}
   empty.style.display='none';
@@ -757,7 +753,6 @@ function renderBackupInfo(){
     return'最後備份時間：'+d.toLocaleString('zh-TW');
   })();
   const t1=document.getElementById('last-backup-time');if(t1)t1.textContent=label;
-  const t2=document.getElementById('last-backup-time-2');if(t2)t2.textContent=label;
 
   const listEl=document.getElementById('backup-list');
   if(listEl){
@@ -767,8 +762,6 @@ function renderBackupInfo(){
     }).join(''):'<div style="color:var(--muted);font-size:12px;padding:8px 2px">尚無備份紀錄</div>';
   }
 }
-function openBackupModal(){document.getElementById('backup-modal-bg').classList.add('open');}
-function closeBackupModal(){document.getElementById('backup-modal-bg').classList.remove('open');}
 
 function restoreBackup(id){
   const b=backups.find(b=>b.id===id);if(!b)return;
@@ -782,7 +775,7 @@ function restoreBackup(id){
     (snap.tasks||[]).forEach(t=>{const ref=db.collection('tasks').doc();batch.set(ref,t);});
     (snap.credentials||[]).forEach(c=>{const ref=db.collection('credentials').doc();batch.set(ref,c);});
     return batch.commit();
-  }).then(()=>{closeBackupModal();showToast('✓ 已還原備份');})
+  }).then(()=>{showToast('✓ 已還原備份');})
     .catch(e=>showToast('還原失敗：'+e.message,'err'));
 }
 
