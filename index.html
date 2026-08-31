@@ -58,13 +58,12 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .cred-body{padding:4px 0}
 .cr{display:flex;align-items:baseline;padding:7px 15px;border-bottom:1px solid #f0ede8}
 .cr:last-child{border-bottom:none}
-.cr-lbl{font-family:var(--mono);font-size:10px;color:var(--label);min-width:82px;flex-shrink:0;letter-spacing:.05em}
+.cr-lbl{font-family:var(--mono);font-size:14px;color:var(--label);min-width:82px;flex-shrink:0;letter-spacing:.02em;font-weight:500}
 .cr-val{font-family:var(--mono);font-size:14px;color:var(--ink);word-break:break-all}
 .cr.pay{border-left:3px solid var(--sage);background:var(--sage-lt);padding:10px 15px}
-.cr.pay .cr-lbl{color:var(--sage);font-weight:500}
+.cr.pay .cr-lbl{color:var(--sage);font-weight:600}
 .cr.pay .cr-val{font-size:22px;font-weight:700;color:var(--sage);letter-spacing:.18em}
-.pay-tag{font-size:9px;font-family:var(--mono);font-weight:600;background:var(--sage);color:#fff;padding:1px 5px;border-radius:3px;margin-left:8px;vertical-align:middle}
-.cred-note{font-size:11px;padding:8px 15px;border-top:1px solid var(--border);color:var(--rust);background:var(--rust-lt);line-height:1.6}
+.cred-note{font-size:12px;padding:8px 15px;border-top:1px solid var(--border);color:var(--rust);background:var(--rust-lt);line-height:1.6;word-break:break-all;overflow-wrap:anywhere}
 
 .main{padding:24px}
 
@@ -664,7 +663,7 @@ function renderCredentials(){
   const cardsHtml=credentials.map((c,idx)=>{
     const color=CARD_COLORS[idx%CARD_COLORS.length];
     const rows=(c.fields||[]).map(f=>f.pay
-      ?`<div class="cr pay" style="border-left-color:${color};background:${color}18"><div class="cr-lbl" style="color:${color}">${f.label}</div><div class="cr-val" style="color:${color}">${f.value}<span class="pay-tag" style="background:${color}">PAY</span></div></div>`
+      ?`<div class="cr pay" style="border-left-color:${color};background:${color}18"><div class="cr-lbl" style="color:${color}">${f.label}</div><div class="cr-val" style="color:${color}">${f.value}</div></div>`
       :`<div class="cr"><div class="cr-lbl">${f.label}</div><div class="cr-val">${f.value}</div></div>`
     ).join('');
     return`<div class="cred-card">
