@@ -67,8 +67,6 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 
 .main{padding:24px}
 
-.stats{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap}
-
 /* --- gantt timeline --- */
 .gantt-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);margin-bottom:24px}
 .gantt-range-label{font-family:var(--mono);font-size:11px;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--border)}
@@ -95,10 +93,6 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .gantt-legend{display:flex;flex-wrap:wrap;gap:14px;padding:10px 14px;font-size:11px;color:var(--muted);border-top:1px solid var(--border)}
 .gantt-legend-dot{display:inline-block;width:11px;height:9px;border-radius:3px;vertical-align:-1px;margin-right:4px}
 .gantt-empty{padding:24px;text-align:center;color:var(--muted);font-size:13px}
-.stat-box{flex:1;min-width:80px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow)}
-.stat-num{font-family:var(--serif);font-size:26px;font-weight:700;line-height:1}
-.stat-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.08em}
-.c-sage{color:var(--sage)}.c-rust{color:var(--rust)}.c-clay{color:var(--clay)}
 
 .sec-hd{display:flex;align-items:center;margin-bottom:14px;gap:12px}
 .sec-title{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--ink);white-space:nowrap}
@@ -280,12 +274,6 @@ a{color:var(--sage);font-size:11px}
     <!-- ① 任務總覽 -->
     <div class="view-panel" id="view-overview">
       <div id="gantt-wrap"></div>
-      <div class="stats" id="stats">
-        <div class="stat-box"><div class="stat-num c-sage" id="st-total">0</div><div class="stat-lbl">TOTAL</div></div>
-        <div class="stat-box"><div class="stat-num c-rust" id="st-doing">0</div><div class="stat-lbl">DOING</div></div>
-        <div class="stat-box"><div class="stat-num c-sage" id="st-done">0</div><div class="stat-lbl">DONE</div></div>
-        <div class="stat-box"><div class="stat-num c-clay" id="st-todo">0</div><div class="stat-lbl">TODO</div></div>
-      </div>
       <div class="sec-hd"><span class="sec-title">測試任務清單</span><div class="sec-line"></div></div>
       <div class="tasks-list" id="tasks-list">
         <div class="empty" id="empty-state">
@@ -671,13 +659,10 @@ function renderGantt(){
     wrap.innerHTML='<div class="gantt-wrap"><div class="gantt-empty">尚無已排定起訖日期的任務可顯示時間軸</div></div>';
     return;
   }
-  const starts=scheduled.map(t=>parseDateOnly(t.start));
-  const ends=scheduled.map(t=>parseDateOnly(t.end));
-  let rangeStart=new Date(Math.min(...starts));
-  let rangeEnd=new Date(Math.max(...ends));
-  rangeStart.setDate(rangeStart.getDate()-2);
-  rangeEnd.setDate(rangeEnd.getDate()+2);
-  const totalDays=Math.max(1,Math.round((rangeEnd-rangeStart)/86400000));
+  const todayForRange=new Date();todayForRange.setHours(0,0,0,0);
+  const rangeStart=new Date(todayForRange.getFullYear(),todayForRange.getMonth()-1,1);
+  const rangeEnd=new Date(todayForRange.getFullYear(),todayForRange.getMonth()+2,0);
+  const totalDays=Math.max(1,Math.round((rangeEnd-rangeStart)/86400000)+1);
 
   const months=[];
   let cur=new Date(rangeStart.getFullYear(),rangeStart.getMonth(),1);
@@ -694,10 +679,17 @@ function renderGantt(){
   const todayPct=(today-rangeStart)/86400000/totalDays*100;
   const showToday=todayPct>=0&&todayPct<=100;
 
-  const rowsHtml=scheduled.map(t=>{
+  const visible=scheduled.filter(t=>{
     const s=parseDateOnly(t.start),e=parseDateOnly(t.end);
-    const left=(s-rangeStart)/86400000/totalDays*100;
-    const width=Math.max(2,(e-s)/86400000/totalDays*100);
+    return e>=rangeStart&&s<=rangeEnd;
+  });
+
+  const rowsHtml=visible.length?visible.map(t=>{
+    const s=parseDateOnly(t.start),e=parseDateOnly(t.end);
+    let left=(s-rangeStart)/86400000/totalDays*100;
+    let right=(e-rangeStart)/86400000/totalDays*100+ (1/totalDays*100);
+    left=Math.max(0,left);right=Math.min(100,right);
+    const width=Math.max(2,right-left);
     const u=taskUrgency(t);
     return`<div class="gantt-row">
       <div class="gantt-label">
@@ -710,10 +702,10 @@ function renderGantt(){
         </div>
       </div>
     </div>`;
-  }).join('');
+  }).join(''):'<div class="gantt-empty">目前 3 個月區間內尚無已排定日期的任務</div>';
 
   wrap.innerHTML=`<div class="gantt-wrap">
-    <div class="gantt-range-label">顯示範圍：${rangeStart.getMonth()+1}/${rangeStart.getDate()} － ${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}（依任務日期自動縮放）</div>
+    <div class="gantt-range-label">顯示範圍：${rangeStart.getMonth()+1}/${rangeStart.getDate()} － ${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}（固定3個月視窗，以今日為中心）</div>
     <div class="gantt-header">
       <div class="gantt-header-label">任務編號</div>
       <div class="gantt-header-months">
@@ -737,10 +729,6 @@ function renderGantt(){
 function render(){
   const list=document.getElementById('tasks-list');
   const empty=document.getElementById('empty-state');
-  document.getElementById('st-total').textContent=tasks.length;
-  document.getElementById('st-doing').textContent=tasks.filter(t=>t.status==='doing').length;
-  document.getElementById('st-done').textContent=tasks.filter(t=>t.status==='done').length;
-  document.getElementById('st-todo').textContent=tasks.filter(t=>t.status==='todo').length;
 
   renderGantt();
 
