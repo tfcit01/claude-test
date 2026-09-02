@@ -71,20 +71,21 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .gantt-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);margin-bottom:24px}
 .gantt-range-label{font-family:var(--mono);font-size:11px;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--border)}
 .gantt-header{display:flex;border-bottom:1px solid var(--border)}
-.gantt-header-label{width:170px;flex-shrink:0;padding:8px 12px;font-size:12px;font-weight:600;color:var(--label)}
+.gantt-header-label{width:220px;flex-shrink:0;padding:9px 14px;font-size:13.5px;font-weight:600;color:var(--label)}
 .gantt-header-months{flex:1;display:flex;position:relative}
-.gantt-month{text-align:center;padding:8px 0;font-size:12px;font-weight:600;color:var(--ink2);border-right:1px solid var(--border)}
+.gantt-month{text-align:center;padding:9px 0;font-size:13.5px;font-weight:600;color:var(--ink2);border-right:1px solid var(--border2)}
 .gantt-month:last-child{border-right:none}
+.gantt-month-line{position:absolute;top:0;bottom:0;width:0;border-left:1px solid var(--border2);z-index:1}
 .gantt-body{position:relative}
 .gantt-today{position:absolute;top:0;bottom:0;width:0;border-left:1.5px dashed var(--rust);z-index:2;pointer-events:none}
 .gantt-today-lbl{position:absolute;top:2px;left:5px;font-size:10px;color:var(--rust);font-family:var(--mono);white-space:nowrap}
 .gantt-row{display:flex;align-items:center;border-bottom:1px solid #f0ede8;min-height:46px}
 .gantt-row:last-child{border-bottom:none}
-.gantt-label{width:170px;flex-shrink:0;padding:6px 12px}
-.gantt-label-code{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--ink)}
-.gantt-label-name{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gantt-label{width:220px;flex-shrink:0;padding:8px 14px}
+.gantt-label-code{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--ink)}
+.gantt-label-name{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gantt-track{flex:1;position:relative;height:34px}
-.gantt-bar{position:absolute;top:5px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:10.5px;white-space:nowrap;overflow:hidden;padding:0 6px;font-family:var(--mono)}
+.gantt-bar{position:absolute;top:5px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;white-space:nowrap;overflow:hidden;padding:0 8px;font-family:var(--mono)}
 .gb-overdue{background:var(--clay-lt);color:var(--muted);border:1px solid var(--border2)}
 .gb-danger{background:var(--rust-lt);color:var(--rust);border:1px solid var(--rust)}
 .gb-warning{background:var(--amber-lt);color:var(--amber);border:1px solid var(--amber)}
@@ -674,6 +675,9 @@ function renderGantt(){
     months.push({label:(cur.getMonth()+1)+'月',widthPct:days/totalDays*100});
     cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);
   }
+  const dividerPcts=[];
+  let acc=0;
+  months.slice(0,-1).forEach(m=>{acc+=m.widthPct;dividerPcts.push(acc);});
 
   const today=new Date();today.setHours(0,0,0,0);
   const todayPct=(today-rangeStart)/86400000/totalDays*100;
@@ -698,7 +702,7 @@ function renderGantt(){
       </div>
       <div class="gantt-track">
         <div class="gantt-bar gb-${u.level}" style="left:${left}%;width:${width}%">
-          <span>${t.start.slice(5)}–${t.end.slice(5)}</span><span style="opacity:.75">・${u.tag}</span>
+          <span>${t.start.slice(5)}–${t.end.slice(5)}</span>
         </div>
       </div>
     </div>`;
@@ -713,7 +717,8 @@ function renderGantt(){
       </div>
     </div>
     <div class="gantt-body">
-      ${showToday?`<div class="gantt-today" style="left:calc(170px + ${todayPct}%)"><div class="gantt-today-lbl">今天 ${today.getMonth()+1}/${today.getDate()}</div></div>`:''}
+      ${dividerPcts.map(p=>`<div class="gantt-month-line" style="left:calc(220px + ${p}%)"></div>`).join('')}
+      ${showToday?`<div class="gantt-today" style="left:calc(220px + ${todayPct}%)"><div class="gantt-today-lbl">今天 ${today.getMonth()+1}/${today.getDate()}</div></div>`:''}
       ${rowsHtml}
     </div>
     <div class="gantt-legend">
