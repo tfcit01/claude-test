@@ -17,6 +17,7 @@
   --rust:#b05a3a;--rust-lt:#fdf0ec;
   --clay:#7a6a5a;--clay-lt:#f0ede8;
   --gold:#8b7355;
+  --amber:#b8863a;--amber-lt:#fdf3e3;
   --serif:'Noto Serif TC',serif;--sans:'Noto Sans TC',sans-serif;--mono:'DM Mono',monospace;
   --r:10px;--shadow:0 2px 12px rgba(44,40,37,.07);--shadow2:0 4px 24px rgba(44,40,37,.11);
 }
@@ -67,6 +68,33 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .main{padding:24px}
 
 .stats{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+
+/* --- gantt timeline --- */
+.gantt-wrap{background:var(--card);border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow);margin-bottom:24px}
+.gantt-range-label{font-family:var(--mono);font-size:11px;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--border)}
+.gantt-header{display:flex;border-bottom:1px solid var(--border)}
+.gantt-header-label{width:170px;flex-shrink:0;padding:8px 12px;font-size:12px;font-weight:600;color:var(--label)}
+.gantt-header-months{flex:1;display:flex;position:relative}
+.gantt-month{text-align:center;padding:8px 0;font-size:12px;font-weight:600;color:var(--ink2);border-right:1px solid var(--border)}
+.gantt-month:last-child{border-right:none}
+.gantt-body{position:relative}
+.gantt-today{position:absolute;top:0;bottom:0;width:0;border-left:1.5px dashed var(--rust);z-index:2;pointer-events:none}
+.gantt-today-lbl{position:absolute;top:2px;left:5px;font-size:10px;color:var(--rust);font-family:var(--mono);white-space:nowrap}
+.gantt-row{display:flex;align-items:center;border-bottom:1px solid #f0ede8;min-height:46px}
+.gantt-row:last-child{border-bottom:none}
+.gantt-label{width:170px;flex-shrink:0;padding:6px 12px}
+.gantt-label-code{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--ink)}
+.gantt-label-name{font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gantt-track{flex:1;position:relative;height:34px}
+.gantt-bar{position:absolute;top:5px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:10.5px;white-space:nowrap;overflow:hidden;padding:0 6px;font-family:var(--mono)}
+.gb-overdue{background:var(--clay-lt);color:var(--muted);border:1px solid var(--border2)}
+.gb-danger{background:var(--rust-lt);color:var(--rust);border:1px solid var(--rust)}
+.gb-warning{background:var(--amber-lt);color:var(--amber);border:1px solid var(--amber)}
+.gb-success{background:var(--sage-lt);color:var(--sage);border:1px solid var(--sage-md)}
+.gb-upcoming{background:transparent;color:var(--muted);border:1px dashed var(--border2)}
+.gantt-legend{display:flex;flex-wrap:wrap;gap:14px;padding:10px 14px;font-size:11px;color:var(--muted);border-top:1px solid var(--border)}
+.gantt-legend-dot{display:inline-block;width:11px;height:9px;border-radius:3px;vertical-align:-1px;margin-right:4px}
+.gantt-empty{padding:24px;text-align:center;color:var(--muted);font-size:13px}
 .stat-box{flex:1;min-width:80px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow)}
 .stat-num{font-family:var(--serif);font-size:26px;font-weight:700;line-height:1}
 .stat-lbl{font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:4px;letter-spacing:.08em}
@@ -251,6 +279,7 @@ a{color:var(--sage);font-size:11px}
 
     <!-- ① 任務總覽 -->
     <div class="view-panel" id="view-overview">
+      <div id="gantt-wrap"></div>
       <div class="stats" id="stats">
         <div class="stat-box"><div class="stat-num c-sage" id="st-total">0</div><div class="stat-lbl">TOTAL</div></div>
         <div class="stat-box"><div class="stat-num c-rust" id="st-doing">0</div><div class="stat-lbl">DOING</div></div>
@@ -543,19 +572,33 @@ function populateSystemSelect(){
   sel.value=cur;
 }
 
+/* ============ 任務編號自動流水號（Firestore transaction） ============ */
+function getNextTaskCode(){
+  const counterRef=db.collection('meta').doc('taskCounter');
+  return db.runTransaction(async tx=>{
+    const doc=await tx.get(counterRef);
+    const current=doc.exists?(doc.data().value||0):0;
+    const next=current+1;
+    tx.set(counterRef,{value:next});
+    return next;
+  }).then(next=>'T'+String(next).padStart(3,'0'));
+}
+
 /* ============ 任務 CRUD（Firestore） ============ */
 function addTask(){
   const name=document.getElementById('f-name').value.trim();
   if(!name){showToast('請輸入任務名稱','err');return;}
-  const data={
-    name,status:formStatus,system:document.getElementById('f-system').value,
-    start:document.getElementById('f-start').value,end:document.getElementById('f-end').value,
-    members:[...selectedMembers],contacts:[...selectedContacts],
-    notes:document.getElementById('f-notes').value.trim(),
-    createdAt:firebase.firestore.FieldValue.serverTimestamp(),
-    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
-  };
-  db.collection('tasks').add(data).then(()=>{clearForm();showToast('✓ 任務已新增');scheduleBackup();})
+  getNextTaskCode().then(code=>{
+    const data={
+      code,name,status:formStatus,system:document.getElementById('f-system').value,
+      start:document.getElementById('f-start').value,end:document.getElementById('f-end').value,
+      members:[...selectedMembers],contacts:[...selectedContacts],
+      notes:document.getElementById('f-notes').value.trim(),
+      createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+      updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+    };
+    return db.collection('tasks').add(data);
+  }).then(()=>{clearForm();showToast('✓ 任務已新增');scheduleBackup();})
     .catch(e=>showToast('新增失敗：'+e.message,'err'));
 }
 
@@ -594,6 +637,103 @@ function statusInfo(s){
 }
 
 /* ============ 任務渲染 ============ */
+/* ============ 甘特圖時間軸 ============ */
+function parseDateOnly(s){
+  if(!s)return null;
+  const [y,m,d]=s.split('-').map(Number);
+  return new Date(y,m-1,d);
+}
+function workdaysBetween(from,to){
+  let count=0;const d=new Date(from);
+  while(d<=to){
+    const day=d.getDay();
+    if(day!==0&&day!==6)count++;
+    d.setDate(d.getDate()+1);
+  }
+  return count;
+}
+function taskUrgency(t){
+  const start=parseDateOnly(t.start),end=parseDateOnly(t.end);
+  if(!start||!end)return null;
+  const today=new Date();today.setHours(0,0,0,0);
+  if(start>today)return{level:'upcoming',tag:'尚未開始'};
+  if(end<today)return{level:'overdue',tag:'已逾期'};
+  const remain=workdaysBetween(today,end);
+  if(remain<3)return{level:'danger',tag:remain+'個工作天'};
+  if(remain<10)return{level:'warning',tag:remain+'個工作天'};
+  return{level:'success',tag:remain+'個工作天'};
+}
+function renderGantt(){
+  const wrap=document.getElementById('gantt-wrap');
+  if(!wrap)return;
+  const scheduled=tasks.filter(t=>t.start&&t.end);
+  if(!scheduled.length){
+    wrap.innerHTML='<div class="gantt-wrap"><div class="gantt-empty">尚無已排定起訖日期的任務可顯示時間軸</div></div>';
+    return;
+  }
+  const starts=scheduled.map(t=>parseDateOnly(t.start));
+  const ends=scheduled.map(t=>parseDateOnly(t.end));
+  let rangeStart=new Date(Math.min(...starts));
+  let rangeEnd=new Date(Math.max(...ends));
+  rangeStart.setDate(rangeStart.getDate()-2);
+  rangeEnd.setDate(rangeEnd.getDate()+2);
+  const totalDays=Math.max(1,Math.round((rangeEnd-rangeStart)/86400000));
+
+  const months=[];
+  let cur=new Date(rangeStart.getFullYear(),rangeStart.getMonth(),1);
+  while(cur<=rangeEnd){
+    const monthStart=cur<rangeStart?rangeStart:cur;
+    const monthEndRaw=new Date(cur.getFullYear(),cur.getMonth()+1,0);
+    const monthEnd=monthEndRaw>rangeEnd?rangeEnd:monthEndRaw;
+    const days=Math.round((monthEnd-monthStart)/86400000)+1;
+    months.push({label:(cur.getMonth()+1)+'月',widthPct:days/totalDays*100});
+    cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);
+  }
+
+  const today=new Date();today.setHours(0,0,0,0);
+  const todayPct=(today-rangeStart)/86400000/totalDays*100;
+  const showToday=todayPct>=0&&todayPct<=100;
+
+  const rowsHtml=scheduled.map(t=>{
+    const s=parseDateOnly(t.start),e=parseDateOnly(t.end);
+    const left=(s-rangeStart)/86400000/totalDays*100;
+    const width=Math.max(2,(e-s)/86400000/totalDays*100);
+    const u=taskUrgency(t);
+    return`<div class="gantt-row">
+      <div class="gantt-label">
+        <div class="gantt-label-code">${t.code||'—'}</div>
+        <div class="gantt-label-name">${t.name}</div>
+      </div>
+      <div class="gantt-track">
+        <div class="gantt-bar gb-${u.level}" style="left:${left}%;width:${width}%">
+          <span>${t.start.slice(5)}–${t.end.slice(5)}</span><span style="opacity:.75">・${u.tag}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML=`<div class="gantt-wrap">
+    <div class="gantt-range-label">顯示範圍：${rangeStart.getMonth()+1}/${rangeStart.getDate()} － ${rangeEnd.getMonth()+1}/${rangeEnd.getDate()}（依任務日期自動縮放）</div>
+    <div class="gantt-header">
+      <div class="gantt-header-label">任務編號</div>
+      <div class="gantt-header-months">
+        ${months.map(m=>`<div class="gantt-month" style="width:${m.widthPct}%">${m.label}</div>`).join('')}
+      </div>
+    </div>
+    <div class="gantt-body">
+      ${showToday?`<div class="gantt-today" style="left:calc(170px + ${todayPct}%)"><div class="gantt-today-lbl">今天 ${today.getMonth()+1}/${today.getDate()}</div></div>`:''}
+      ${rowsHtml}
+    </div>
+    <div class="gantt-legend">
+      <span><span class="gantt-legend-dot" style="background:var(--clay-lt);border:1px solid var(--border2)"></span>已逾期</span>
+      <span><span class="gantt-legend-dot" style="background:var(--rust-lt);border:1px solid var(--rust)"></span>剩&lt;3個工作天</span>
+      <span><span class="gantt-legend-dot" style="background:var(--amber-lt);border:1px solid var(--amber)"></span>剩&lt;10個工作天</span>
+      <span><span class="gantt-legend-dot" style="background:var(--sage-lt);border:1px solid var(--sage-md)"></span>剩≥10個工作天</span>
+      <span><span class="gantt-legend-dot" style="background:transparent;border:1px dashed var(--border2)"></span>尚未開始</span>
+    </div>
+  </div>`;
+}
+
 function render(){
   const list=document.getElementById('tasks-list');
   const empty=document.getElementById('empty-state');
@@ -601,6 +741,8 @@ function render(){
   document.getElementById('st-doing').textContent=tasks.filter(t=>t.status==='doing').length;
   document.getElementById('st-done').textContent=tasks.filter(t=>t.status==='done').length;
   document.getElementById('st-todo').textContent=tasks.filter(t=>t.status==='todo').length;
+
+  renderGantt();
 
   if(!tasks.length){list.innerHTML='';list.appendChild(empty);empty.style.display='block';return;}
   empty.style.display='none';
@@ -617,7 +759,7 @@ function render(){
       <div class="task-main">
         <div class="task-status-bar" style="background:${si.color}"></div>
         <div class="task-name-wrap" onclick="toggleTask('${t.id}')" style="cursor:pointer">
-          <div class="task-name">${t.name}</div>
+          <div class="task-name">${t.code?`<span style="font-family:var(--mono);color:var(--muted);font-weight:500;font-size:12px;margin-right:6px">${t.code}</span>`:''}${t.name}</div>
           <div class="task-sub">${t.system?'支付：'+t.system+'　':''} ${t.start||''}${t.end?' ～ '+t.end:''}</div>
         </div>
         <div class="task-meta">
