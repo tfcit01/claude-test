@@ -72,7 +72,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .gantt-range-label{font-family:var(--mono);font-size:11px;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--border)}
 .gantt-header{display:flex;border-bottom:1px solid var(--border)}
 .gantt-header-label{width:220px;flex-shrink:0;padding:9px 14px;font-size:13.5px;font-weight:600;color:var(--label)}
-.gantt-header-months{flex:1;display:flex;position:relative}
+.gantt-header-months{flex:1;display:flex;position:relative;border-left:1px solid var(--border2)}
 .gantt-month{text-align:center;padding:9px 0;font-size:13.5px;font-weight:600;color:var(--ink2);border-right:1px solid var(--border2)}
 .gantt-month:last-child{border-right:none}
 .gantt-month-line{position:absolute;top:0;bottom:0;width:0;border-left:1px solid var(--border2);z-index:1}
@@ -86,7 +86,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .gantt-label{width:220px;flex-shrink:0;padding:8px 14px;display:flex;align-items:baseline;gap:8px;overflow:hidden}
 .gantt-label-code{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--ink);flex-shrink:0}
 .gantt-label-name{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gantt-track{flex:1;position:relative;height:34px}
+.gantt-track{flex:1;position:relative;height:34px;border-left:1px solid var(--border2)}
 .gantt-bar{position:absolute;top:5px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;white-space:nowrap;overflow:hidden;padding:0 8px;font-family:var(--mono);z-index:5}
 .gb-overdue{background:var(--clay-lt);color:var(--muted);border:1px solid var(--border2)}
 .gb-danger{background:var(--rust-lt);color:var(--rust);border:1px solid var(--rust)}
@@ -677,7 +677,7 @@ function renderGantt(){
     months.push({label:(cur.getMonth()+1)+'月',widthPct:days/totalDays*100});
     cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);
   }
-  const dividerPcts=[0];
+  const dividerPcts=[];
   let acc=0;
   months.slice(0,-1).forEach(m=>{acc+=m.widthPct;dividerPcts.push(acc);});
 
