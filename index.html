@@ -80,6 +80,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .gantt-overlay{position:absolute;top:0;bottom:0;left:220px;right:0;pointer-events:none}
 .gantt-today{position:absolute;top:0;bottom:0;width:0;border-left:1.5px dashed var(--rust);z-index:2;pointer-events:none}
 .gantt-today-lbl{position:absolute;top:2px;left:5px;font-size:10px;color:var(--rust);font-family:var(--mono);white-space:nowrap}
+.gantt-today-badge{position:absolute;bottom:-11px;transform:translateX(-50%);background:var(--rust);color:#fff;font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:10px;white-space:nowrap;z-index:3;box-shadow:0 2px 6px rgba(176,90,58,.35)}
 .gantt-row{display:flex;align-items:center;border-bottom:1px solid #f0ede8;min-height:46px}
 .gantt-row:last-child{border-bottom:none}
 .gantt-label{width:220px;flex-shrink:0;padding:8px 14px;display:flex;align-items:baseline;gap:8px;overflow:hidden}
@@ -676,7 +677,7 @@ function renderGantt(){
     months.push({label:(cur.getMonth()+1)+'月',widthPct:days/totalDays*100});
     cur=new Date(cur.getFullYear(),cur.getMonth()+1,1);
   }
-  const dividerPcts=[];
+  const dividerPcts=[0];
   let acc=0;
   months.slice(0,-1).forEach(m=>{acc+=m.widthPct;dividerPcts.push(acc);});
 
@@ -704,7 +705,7 @@ function renderGantt(){
       </div>
       <div class="gantt-track">
         <div class="gantt-bar gb-${u.level}" style="left:${left}%;width:${width}%">
-          <span>${t.start.slice(5)}–${t.end.slice(5)}</span>
+          <span>${t.start.slice(5).replace('-','')}–${t.end.slice(5).replace('-','')}</span>
         </div>
       </div>
     </div>`;
@@ -720,12 +721,13 @@ function renderGantt(){
       <div class="gantt-header-label">任務編號</div>
       <div class="gantt-header-months">
         ${months.map(m=>`<div class="gantt-month" style="width:${m.widthPct}%">${m.label}</div>`).join('')}
+        ${showToday?`<div class="gantt-today-badge" style="left:${todayPct}%">今天 ${today.getMonth()+1}/${today.getDate()}</div>`:''}
       </div>
     </div>
     <div class="gantt-body">
       <div class="gantt-overlay">
         ${dividerPcts.map(p=>`<div class="gantt-month-line" style="left:${p}%"></div>`).join('')}
-        ${showToday?`<div class="gantt-today" style="left:${todayPct}%"><div class="gantt-today-lbl">今天 ${today.getMonth()+1}/${today.getDate()}</div></div>`:''}
+        ${showToday?`<div class="gantt-today" style="left:${todayPct}%"></div>`:''}
       </div>
       ${rowsHtml}
     </div>
@@ -741,12 +743,14 @@ function renderGantt(){
 
 function render(){
   const list=document.getElementById('tasks-list');
-  const empty=document.getElementById('empty-state');
+  const EMPTY_HTML=`<div class="empty" id="empty-state">
+    <span class="e-icon">🗂</span>
+    尚無任務，請至「新增測試任務」建立第一筆測試任務
+  </div>`;
 
   renderGantt();
 
-  if(!tasks.length){list.innerHTML='';list.appendChild(empty);empty.style.display='block';return;}
-  empty.style.display='none';
+  if(!tasks.length){list.innerHTML=EMPTY_HTML;return;}
 
   const sysOptions=getAllSystemOptions();
 
