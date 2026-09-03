@@ -77,12 +77,13 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .gantt-month:last-child{border-right:none}
 .gantt-month-line{position:absolute;top:0;bottom:0;width:0;border-left:1px solid var(--border2);z-index:1}
 .gantt-body{position:relative}
+.gantt-overlay{position:absolute;top:0;bottom:0;left:220px;right:0;pointer-events:none}
 .gantt-today{position:absolute;top:0;bottom:0;width:0;border-left:1.5px dashed var(--rust);z-index:2;pointer-events:none}
 .gantt-today-lbl{position:absolute;top:2px;left:5px;font-size:10px;color:var(--rust);font-family:var(--mono);white-space:nowrap}
 .gantt-row{display:flex;align-items:center;border-bottom:1px solid #f0ede8;min-height:46px}
 .gantt-row:last-child{border-bottom:none}
-.gantt-label{width:220px;flex-shrink:0;padding:8px 14px}
-.gantt-label-code{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--ink)}
+.gantt-label{width:220px;flex-shrink:0;padding:8px 14px;display:flex;align-items:baseline;gap:8px;overflow:hidden}
+.gantt-label-code{font-family:var(--mono);font-size:13.5px;font-weight:600;color:var(--ink);flex-shrink:0}
 .gantt-label-name{font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gantt-track{flex:1;position:relative;height:34px}
 .gantt-bar{position:absolute;top:5px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;gap:5px;font-size:12.5px;white-space:nowrap;overflow:hidden;padding:0 8px;font-family:var(--mono)}
@@ -689,6 +690,7 @@ function renderGantt(){
   });
 
   const rowsHtml=visible.length?visible.map(t=>{
+    try{
     const s=parseDateOnly(t.start),e=parseDateOnly(t.end);
     let left=(s-rangeStart)/86400000/totalDays*100;
     let right=(e-rangeStart)/86400000/totalDays*100+ (1/totalDays*100);
@@ -698,7 +700,7 @@ function renderGantt(){
     return`<div class="gantt-row">
       <div class="gantt-label">
         <div class="gantt-label-code">${t.code||'—'}</div>
-        <div class="gantt-label-name">${t.name}</div>
+        <div class="gantt-label-name">${t.name||''}</div>
       </div>
       <div class="gantt-track">
         <div class="gantt-bar gb-${u.level}" style="left:${left}%;width:${width}%">
@@ -706,6 +708,10 @@ function renderGantt(){
         </div>
       </div>
     </div>`;
+    }catch(err){
+      console.error('甘特列渲染失敗，已略過此筆：',t,err);
+      return'';
+    }
   }).join(''):'<div class="gantt-empty">目前 3 個月區間內尚無已排定日期的任務</div>';
 
   wrap.innerHTML=`<div class="gantt-wrap">
@@ -717,8 +723,10 @@ function renderGantt(){
       </div>
     </div>
     <div class="gantt-body">
-      ${dividerPcts.map(p=>`<div class="gantt-month-line" style="left:calc(220px + ${p}%)"></div>`).join('')}
-      ${showToday?`<div class="gantt-today" style="left:calc(220px + ${todayPct}%)"><div class="gantt-today-lbl">今天 ${today.getMonth()+1}/${today.getDate()}</div></div>`:''}
+      <div class="gantt-overlay">
+        ${dividerPcts.map(p=>`<div class="gantt-month-line" style="left:${p}%"></div>`).join('')}
+        ${showToday?`<div class="gantt-today" style="left:${todayPct}%"><div class="gantt-today-lbl">今天 ${today.getMonth()+1}/${today.getDate()}</div></div>`:''}
+      </div>
       ${rowsHtml}
     </div>
     <div class="gantt-legend">
@@ -742,17 +750,19 @@ function render(){
 
   const sysOptions=getAllSystemOptions();
 
-  list.innerHTML=tasks.map(t=>{
-    const si=statusInfo(t.status);
-    const mChips=MEMBERS.map(m=>`<span id="em-${t.id}-${m}" class="edit-chip${(t.members||[]).includes(m)?' active-m':''}" onclick="this.classList.toggle('active-m')">${m}</span>`).join('');
-    const cChips=CONTACTS.map(c=>`<span id="ec-${t.id}-${c}" class="edit-chip${(t.contacts||[]).includes(c)?' active-c':''}" onclick="this.classList.toggle('active-c')">${c}</span>`).join('');
-    const sysOpts=sysOptions.map(s=>`<option value="${s}"${t.system===s?' selected':''}>${s||'— 選擇 —'}</option>`).join('');
-    return`
+  const rowsHtml=[];
+  tasks.forEach(t=>{
+    try{
+      const si=statusInfo(t.status);
+      const mChips=MEMBERS.map(m=>`<span id="em-${t.id}-${m}" class="edit-chip${(t.members||[]).includes(m)?' active-m':''}" onclick="this.classList.toggle('active-m')">${m}</span>`).join('');
+      const cChips=CONTACTS.map(c=>`<span id="ec-${t.id}-${c}" class="edit-chip${(t.contacts||[]).includes(c)?' active-c':''}" onclick="this.classList.toggle('active-c')">${c}</span>`).join('');
+      const sysOpts=sysOptions.map(s=>`<option value="${s}"${t.system===s?' selected':''}>${s||'— 選擇 —'}</option>`).join('');
+      rowsHtml.push(`
     <div class="task-item" id="ti-${t.id}">
       <div class="task-main">
         <div class="task-status-bar" style="background:${si.color}"></div>
         <div class="task-name-wrap" onclick="toggleTask('${t.id}')" style="cursor:pointer">
-          <div class="task-name">${t.code?`<span style="font-family:var(--mono);color:var(--muted);font-weight:500;font-size:12px;margin-right:6px">${t.code}</span>`:''}${t.name}</div>
+          <div class="task-name">${t.code?`<span style="font-family:var(--mono);color:var(--muted);font-weight:500;font-size:12px;margin-right:6px">${t.code}</span>`:''}${t.name||'（未命名任務）'}</div>
           <div class="task-sub">${t.system?'支付：'+t.system+'　':''} ${t.start||''}${t.end?' ～ '+t.end:''}</div>
         </div>
         <div class="task-meta">
@@ -785,8 +795,13 @@ function render(){
           <button class="btn btn-outline" style="color:var(--rust);border-color:var(--rust);margin-left:auto" onclick="deleteTask('${t.id}')">刪除</button>
         </div>
       </div>
-    </div>`;
-  }).join('');
+    </div>`);
+    }catch(err){
+      console.error('任務渲染失敗，已略過此筆：',t,err);
+      rowsHtml.push(`<div class="task-item"><div class="task-main"><div class="task-sub" style="color:var(--rust)">⚠ 任務「${(t.name||t.id||'未知')}」資料格式異常，無法顯示，請至 Firestore 檢查此筆資料</div></div></div>`);
+    }
+  });
+  list.innerHTML=rowsHtml.join('');
 }
 
 function toggleTask(id){document.getElementById('ti-'+id).classList.toggle('open');}
