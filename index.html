@@ -433,9 +433,13 @@ a{color:var(--sage);font-size:11px}
       <label class="f-label">任務名稱</label>
       <input class="f-input" id="m-taskname" readonly />
     </div>
-    <div class="f-group">
+    <div class="f-group" style="margin-bottom:12px">
       <label class="f-label">產出日期</label>
       <input class="f-input" id="m-date" readonly />
+    </div>
+    <div class="f-group">
+      <label class="f-label">選擇驗證樣本</label>
+      <select class="f-select" id="m-sample" style="height:38px;padding:4px 10px"></select>
     </div>
     <div class="modal-actions">
       <button class="btn btn-outline" onclick="closeModalDirect()">取消</button>
@@ -853,6 +857,12 @@ function render(){
           <div class="eg-full"><div class="edit-label">配合窗口</div><div class="edit-chips">${cChips}</div></div>
           <div class="eg-full"><div class="edit-label">備註</div><input class="edit-input" id="e-notes-${t.id}" value="${(t.notes||'').replace(/"/g,'&quot;')}" placeholder="選填" /></div>
         </div>
+        ${(t.sampleRuns&&t.sampleRuns.length)?`<div style="font-size:12px;color:var(--muted);padding:8px 0;border-top:1px solid var(--border)">
+          📊 已產生測試清單 <strong style="color:var(--ink)">${t.sampleRuns.length}</strong> 次
+          <div style="margin-top:4px;max-height:110px;overflow-y:auto">
+            ${t.sampleRuns.slice().reverse().map(r=>`<div style="padding:2px 0">・${new Date(r.generatedAt).toLocaleString('zh-TW')}　使用「${r.sampleName}」${r.sampleType==='custom'?'(自訂)':'(隨機)'}</div>`).join('')}
+          </div>
+        </div>`:''}
         <div class="task-actions">
           <button class="btn btn-primary" onclick="saveEdit('${t.id}')">💾 儲存修改</button>
           <button class="btn btn-print" onclick="openModal('${t.id}')">📊 產生測試清單</button>
@@ -1013,10 +1023,11 @@ function generateRandomRows(){
   const rows=[];
   for(let i=1;i<=SAMPLE_ROW_COUNT;i++){
     const r=blankRow(String(i).padStart(3,'0'));
-    r.amount=randInt(50,10000);
+    r.amount=randInt(5,1000)*10;
     const payCount=randInt(1,3);
+    const shuffled=[...SAMPLE_PAY_OPTIONS].sort(()=>Math.random()-0.5);
     const slots=['pay1','pay2','pay3'];
-    for(let k=0;k<payCount;k++)r[slots[k]]=randPick(SAMPLE_PAY_OPTIONS);
+    for(let k=0;k<payCount;k++)r[slots[k]]=shuffled[k];
     r.member=Math.random()<0.5;
     r.diplomat=Math.random()<0.5;
     r.carrier=Math.random()<0.5;
@@ -1125,6 +1136,12 @@ function openModal(id){
   const t=tasks.find(t=>t.id===id);if(!t)return;
   document.getElementById('m-taskname').value=t.name;
   document.getElementById('m-date').value=new Date().toLocaleDateString('zh-TW');
+  const sel=document.getElementById('m-sample');
+  if(!samples.length){
+    sel.innerHTML='<option value="">尚無驗證樣本，請先至「驗證樣本」頁建立</option>';
+  }else{
+    sel.innerHTML='<option value="">— 請選擇驗證樣本 —</option>'+samples.map(s=>`<option value="${s.id}">${s.name}（${s.type==='custom'?'自訂':'隨機'}・${(s.rows||[]).length}筆）</option>`).join('');
+  }
   document.getElementById('modal-bg').classList.add('open');
 }
 function closeModal(e){if(e.target===document.getElementById('modal-bg'))closeModalDirect();}
@@ -1144,23 +1161,23 @@ function buildCredStripHtml(systemName){
 
 function doExport(){
   const t=tasks.find(t=>t.id===currentTaskId);if(!t)return;
+  const sampleId=document.getElementById('m-sample').value;
+  if(!sampleId){showToast('請先選擇驗證樣本','err');return;}
+  const sample=samples.find(s=>s.id===sampleId);
+  if(!sample){showToast('找不到所選樣本，請重新選擇','err');return;}
   const today=new Date().toLocaleDateString('zh-TW');
   const si=statusInfo(t.status);
-  const systemName=t.system||'新支付';
-  const items=getVerifyItems(systemName);
-  const rowsHtml=items.map((item,i)=>{
-    const isRefund=item.label.startsWith('當日退')||item.label.startsWith('隔日退')||item.label.startsWith('退貨');
-    const isCustom=item.isCustom;
-    const labelHtml=item.label.replace(/新支付/g,`<strong>${systemName}</strong>`);
-    const cv=v=>v==='無後台'?'no-back':v==='-'?'dash':'';
-    const pv=v=>v!==undefined?v:'';
-    return`<tr class="${isCustom?'row-custom':isRefund?'row-refund':'row-sale'}">
-      <td class="td-no">${isCustom?'':i+1}</td>
-      <td class="td-item">${isCustom?'<span class="custom-label">其他測試案例（可自行填寫）</span>':labelHtml}${item.note?`<span class="item-note">${item.note}</span>`:''}</td>
-      <td class="${cv(pv(item.pos))}">${pv(item.pos)}</td><td class="${cv(pv(item.mpos))}">${pv(item.mpos)}</td>
-      <td class="${cv(pv(item.tpos))}">${pv(item.tpos)}</td><td class="${cv(pv(item.kpos))}">${pv(item.kpos)}</td>
-      <td class="td-result"></td><td class="td-tester"></td><td class="td-note"></td></tr>`;
-  }).join('');
+  const ck=v=>v?'✓':'－';
+  const rowsHtml=(sample.rows||[]).map(r=>`<tr>
+      <td class="td-no">${r.seq}</td>
+      <td class="td-amt">${r.amount??'－'}</td>
+      <td>${r.pay1||'－'}</td><td>${r.pay2||'－'}</td><td>${r.pay3||'－'}</td>
+      <td>${ck(r.member)}</td><td>${ck(r.diplomat)}</td><td>${ck(r.carrier)}</td><td>${ck(r.taxId)}</td><td>${ck(r.taxFree)}</td>
+      <td>${r.invoiceNo||'－'}</td>
+      <td class="td-item">${r.notes||''}</td>
+      <td>${ck(r.voided)}</td>
+      <td class="td-result"></td><td class="td-tester"></td><td class="td-note"></td>
+    </tr>`).join('');
   const html=`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8"><title>${t.name} 測試清單</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -1234,13 +1251,14 @@ td.dash{background:#f5f3ef;color:#c5bfb8}
         <div class="meta-item"><span class="meta-label">配合窗口</span><span>${(t.contacts||[]).join('、')||'—'}</span></div>
         <div class="meta-item"><span class="meta-label">狀態</span><span>${si.label}</span></div>
         ${t.notes?`<div class="meta-item"><span class="meta-label">備註</span><span>${t.notes}</span></div>`:''}
+        <div class="meta-item"><span class="meta-label">驗證樣本</span><span>${sample.name}（${sample.type==='custom'?'自訂':'隨機'}）</span></div>
       </div>
     </div>
   </div>
   <div class="creds-strip">${buildCredStripHtml(t.system)}</div>
   <div class="table-wrap"><table>
-    <colgroup><col class="col-no"><col><col class="col-pos"><col class="col-pos"><col class="col-pos"><col class="col-pos"><col class="col-result"><col class="col-tester"><col class="col-note"></colgroup>
-    <thead><tr><th class="col-no">#</th><th class="th-item">驗證項目 / 機台</th><th>商場POS</th><th>MPOS</th><th>票務人工POS</th><th>紀念品POS</th><th>結果</th><th>測試人員</th><th>備註</th></tr></thead>
+    <colgroup><col style="width:34px"><col style="width:56px"><col><col><col><col style="width:32px"><col style="width:38px"><col style="width:32px"><col style="width:32px"><col style="width:32px"><col style="width:56px"><col><col style="width:32px"><col class="col-result"><col class="col-tester"><col class="col-note"></colgroup>
+    <thead><tr><th>流水號</th><th>消費金額</th><th>支付1</th><th>支付2</th><th>支付3</th><th>會員</th><th>外交官</th><th>載具</th><th>統編</th><th>免稅</th><th>發票號碼</th><th class="th-item">備註說明</th><th>作廢</th><th>結果</th><th>測試人員</th><th>備註</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table></div>
   <div class="report-footer">
@@ -1249,37 +1267,23 @@ td.dash{background:#f5f3ef;color:#c5bfb8}
       <div class="legend-item"><div class="legend-dot" style="background:#fdf0ec;color:#b05a3a;border:1px solid #d4a090">✕</div> Fail</div>
       <div class="legend-item"><div class="legend-dot" style="background:#faf5e8;color:#8b7355;border:1px solid #c8b89a">△</div> 部分通過</div>
       <div class="legend-item"><div class="legend-dot" style="background:#f5f3ef;color:#9b9289;border:1px solid #cdc7bc">—</div> 跳過</div>
-      <div class="legend-item" style="margin-left:6px;padding-left:6px;border-left:1px solid #e2ddd6"><div class="legend-dot" style="background:#5c7a6e;color:#fff;font-size:7px">銷</div> 銷售</div>
-      <div class="legend-item"><div class="legend-dot" style="background:#b05a3a;color:#fff;font-size:7px">退</div> 退款</div>
     </div>
     <div class="doc-id">產出：${today} · TEST ENV</div>
   </div>
 </div></body></html>`;
   const win=window.open('','_blank');win.document.write(html);win.document.close();
-  closeModalDirect();showToast('✓ 列印清單已開啟');
-}
+  closeModalDirect();showToast('✓ 列印清單已開啟，紀錄中…');
 
-function getVerifyItems(system){
-  if(OTHER_SYSTEMS.includes(system)){
-    return[
-      {label:'銷售'},{label:'退貨'},{label:'多重支付'},{label:'隔日退貨'},
-      {label:'會員登錄'},{label:'外交官交易'},
-      {label:'',isCustom:true},{label:'',isCustom:true},{label:'',isCustom:true},
-    ];
-  }
-  const base=[
-    {label:'銷售：新支付 100元'},{label:'當日退：新支付 100元'},
-    {label:'銷售：新支付 10+現金50'},{label:'當日退：新支付 10+現金50'},
-    {label:'銷售：新支付 10+LINEPAY 50'},{label:'當日退：新支付 10+ LINEPAY 50'},
-    {label:'銷售：新支付 50元+電子禮券 50元'},{label:'當日退：新支付 50元+電子禮券 50元'},
-    {label:'銷售：新支付 50元+電子禮券 50元（需人工後台退款）',pos:'無後台',mpos:'-',tpos:'-',kpos:'-',note:'需人工後台操作'},
-    {label:'銷售：新支付 50+點數100點(25元)'},{label:'當日退：新支付 50+點數100點(25元)'},
-    {label:'銷售：新支付 1元'},{label:'隔日退：新支付 1元'},
-    {label:'',isCustom:true},{label:'',isCustom:true},{label:'',isCustom:true},
-  ];
-  if(system==='GLNPAY'){base.splice(-3,0,{label:'虛擬鍵盤輸入密碼',note:'需使用畫面上鍵盤，不可直接鍵入'},{label:'國家選擇 Taiwan',note:'下拉選單確認顯示正確'});}
-  if(system==='台新PAY'){base.splice(-3,0,{label:'裝置綁定驗證 (000000)',note:'綁定完成後方可付款'},{label:'OTP 驗證 (123456)',note:''});}
-  return base;
+  const history=[...(t.sampleRuns||[]),{
+    sampleId:sample.id,
+    sampleName:sample.name,
+    sampleType:sample.type,
+    rows:sample.rows,
+    generatedAt:new Date().toISOString()
+  }];
+  db.collection('tasks').doc(t.id).update({sampleRuns:history,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
+    .then(()=>scheduleBackup())
+    .catch(e=>console.error('紀錄產生歷程失敗',e));
 }
 
 function showToast(msg,type){
