@@ -97,6 +97,32 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .gantt-legend-dot{display:inline-block;width:11px;height:9px;border-radius:3px;vertical-align:-1px;margin-right:4px}
 .gantt-empty{padding:24px;text-align:center;color:var(--muted);font-size:13px}
 
+/* --- verification samples --- */
+.sample-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:14px;overflow:hidden;box-shadow:var(--shadow)}
+.sample-head{display:flex;align-items:center;gap:12px;padding:14px 16px;cursor:pointer}
+.sample-head:hover{background:#faf9f6}
+.sample-title{font-family:var(--serif);font-size:15px;font-weight:600;color:var(--ink)}
+.sample-badge{font-family:var(--mono);font-size:10px;letter-spacing:.06em;padding:2px 9px;border-radius:20px;font-weight:600}
+.sample-badge.custom{background:var(--clay-lt);color:var(--clay)}
+.sample-badge.random{background:var(--sage-lt);color:var(--sage)}
+.sample-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.sample-actions{display:flex;gap:6px;flex-shrink:0}
+.sample-detail{display:none;border-top:1px solid var(--border);padding:16px;background:#faf9f6}
+.sample-item.open .sample-detail{display:block}
+.sample-item.open .sample-expand{transform:rotate(90deg)}
+.sample-expand{font-size:18px;color:var(--muted);transition:.2s;flex-shrink:0}
+.sample-table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px;background:var(--panel)}
+.sample-table{border-collapse:collapse;width:100%;min-width:1180px}
+.sample-table th{background:var(--sage);color:#fff;font-size:11px;font-weight:600;padding:8px 6px;white-space:nowrap;position:sticky;top:0}
+.sample-table td{padding:4px 5px;border-bottom:1px solid #ede9e3;text-align:center;vertical-align:middle}
+.sample-table tr:nth-child(even) td{background:#faf9f6}
+.sample-table .st-seq{font-family:var(--mono);font-size:12px;color:var(--muted);width:44px}
+.sample-table input[type="number"],.sample-table input[type="text"]{width:100%;min-width:70px;border:1px solid var(--border2);border-radius:5px;padding:5px 6px;font-size:12px;font-family:var(--mono);background:var(--panel);text-align:center}
+.sample-table input[type="text"].st-notes{font-family:var(--sans);text-align:left;min-width:110px}
+.sample-table select{width:100%;min-width:100px;border:1px solid var(--border2);border-radius:5px;padding:5px 4px;font-size:11.5px;background:var(--panel)}
+.sample-table input[type="checkbox"]{width:16px;height:16px;cursor:pointer}
+.sample-toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+
 .sec-hd{display:flex;align-items:center;margin-bottom:14px;gap:12px}
 .sec-title{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--ink);white-space:nowrap}
 .sec-line{flex:1;height:1px;background:var(--border)}
@@ -365,15 +391,37 @@ a{color:var(--sage);font-size:11px}
       <div class="backup-list" id="backup-list" style="max-height:none"></div>
     </div>
 
-    <!-- ⑤ 驗證樣本（待開發） -->
+    <!-- ⑤ 驗證樣本 -->
     <div class="view-panel" id="view-sample" style="display:none">
-      <div class="sec-hd"><span class="sec-title">驗證樣本</span><div class="sec-line"></div></div>
-      <div class="empty">
-        <span class="e-icon">🧪</span>
-        待開發
-      </div>
+      <div class="sec-hd"><span class="sec-title">驗證樣本</span><div class="sec-line"></div><button class="btn btn-outline" onclick="openNewSampleModal()">＋ 新增樣本</button></div>
+      <div id="samples-wrap"><div style="text-align:center;color:var(--muted);font-size:12px;padding:20px">載入中…</div></div>
     </div>
 
+  </div>
+</div>
+
+<!-- 新增樣本 modal -->
+<div class="modal-bg" id="sample-new-modal-bg" onclick="if(event.target===this)closeNewSampleModal()">
+  <div class="modal">
+    <div class="modal-title">新增驗證樣本</div>
+    <div class="f-group" style="margin-bottom:16px">
+      <label class="f-label">樣本名稱</label>
+      <input class="f-input" id="sample-new-name" placeholder="例如：街口支付 9月驗證" />
+    </div>
+    <div class="f-label" style="margin-bottom:8px">選擇產生方式</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn btn-outline" style="text-align:left;padding:14px 16px" onclick="createSample('custom')">
+        <div style="font-weight:600;margin-bottom:3px">📝 自訂樣本</div>
+        <div style="font-size:12px;color:var(--muted);font-weight:400">產生 12 列交易，僅流水號自動編號，其餘欄位空白供您自行填寫</div>
+      </button>
+      <button class="btn btn-outline" style="text-align:left;padding:14px 16px" onclick="createSample('random')">
+        <div style="font-weight:600;margin-bottom:3px">🎲 隨機樣本</div>
+        <div style="font-size:12px;color:var(--muted);font-weight:400">產生 12 列交易，金額、支付方式、會員等欄位隨機填入</div>
+      </button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeNewSampleModal()">取消</button>
+    </div>
   </div>
 </div>
 
@@ -449,15 +497,19 @@ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL).catch(()=>{});
 let tasks = [];
 let credentials = [];
 let backups = [];
+let samples = [];
 let formStatus='todo', selectedMembers=[], selectedContacts=[], currentTaskId=null;
 let editingCredId=null, editingCredFields=[];
-let unsubTasks=null, unsubCreds=null, unsubBackups=null;
+let unsubTasks=null, unsubCreds=null, unsubBackups=null, unsubSamples=null;
 let backupTimer=null;
+let sampleSaveTimers={};
 
 const MEMBERS=['Daniel','JiaJie','Sam','Kai','Luna'];
 const CONTACTS=['銷售組','OB票務','OB紀念品','商場帳務'];
 const OTHER_SYSTEMS=['中信刷卡','聯信刷卡','悠遊卡','現金','購物金','電子禮券','抵用券'];
 const CARD_COLORS=['#b05a3a','#4a6fa5','#5c7a6e','#8b7355','#6a5a8b','#3a8fa0','#a0673a','#7a8a3a'];
+const SAMPLE_PAY_OPTIONS=['中信刷卡','連信刷卡','購物金','101PAY','LINEPAY','街口支付','台新PAY','台灣PAY','電子商品禮券','電子現金禮券','抵用券','宜睿即享券','現金'];
+const SAMPLE_ROW_COUNT=12;
 
 function tick(){
   const n=new Date();
@@ -514,13 +566,19 @@ function startListeners(){
     backups=snap.docs.map(d=>({id:d.id,...d.data()}));
     renderBackupInfo();
   },err=>{console.error(err);});
+
+  unsubSamples=db.collection('samples').orderBy('createdAt','desc').onSnapshot(snap=>{
+    samples=snap.docs.map(d=>({id:d.id,...d.data()}));
+    renderSamples();
+  },err=>{console.error(err);showToast('讀取驗證樣本失敗，請確認 Firestore 設定','err');});
 }
 function stopListeners(){
   if(unsubTasks)unsubTasks();
   if(unsubCreds)unsubCreds();
   if(unsubBackups)unsubBackups();
-  unsubTasks=unsubCreds=unsubBackups=null;
-  tasks=[];credentials=[];backups=[];
+  if(unsubSamples)unsubSamples();
+  unsubTasks=unsubCreds=unsubBackups=unsubSamples=null;
+  tasks=[];credentials=[];backups=[];samples=[];
 }
 
 /* ============ 導覽切換 ============ */
@@ -938,6 +996,127 @@ function restoreBackup(id){
     return batch.commit();
   }).then(()=>{showToast('✓ 已還原備份');})
     .catch(e=>showToast('還原失敗：'+e.message,'err'));
+}
+
+/* ============ 驗證樣本 ============ */
+function blankRow(seq){
+  return{seq,amount:null,pay1:null,pay2:null,pay3:null,member:false,diplomat:false,carrier:false,taxId:false,taxFree:false,invoiceNo:null,notes:null,voided:false};
+}
+function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
+function randPick(arr){return arr[Math.floor(Math.random()*arr.length)];}
+function generateCustomRows(){
+  const rows=[];
+  for(let i=1;i<=SAMPLE_ROW_COUNT;i++)rows.push(blankRow(String(i).padStart(3,'0')));
+  return rows;
+}
+function generateRandomRows(){
+  const rows=[];
+  for(let i=1;i<=SAMPLE_ROW_COUNT;i++){
+    const r=blankRow(String(i).padStart(3,'0'));
+    r.amount=randInt(50,10000);
+    const payCount=randInt(1,3);
+    const slots=['pay1','pay2','pay3'];
+    for(let k=0;k<payCount;k++)r[slots[k]]=randPick(SAMPLE_PAY_OPTIONS);
+    r.member=Math.random()<0.5;
+    r.diplomat=Math.random()<0.5;
+    r.carrier=Math.random()<0.5;
+    r.taxId=Math.random()<0.5;
+    rows.push(r);
+  }
+  return rows;
+}
+function openNewSampleModal(){
+  document.getElementById('sample-new-name').value='';
+  document.getElementById('sample-new-modal-bg').classList.add('open');
+}
+function closeNewSampleModal(){document.getElementById('sample-new-modal-bg').classList.remove('open');}
+function createSample(type){
+  const name=document.getElementById('sample-new-name').value.trim()||(type==='custom'?'自訂樣本':'隨機樣本');
+  const rows=type==='custom'?generateCustomRows():generateRandomRows();
+  db.collection('samples').add({
+    name,type,rows,
+    createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(()=>{closeNewSampleModal();showToast('✓ 樣本已建立');scheduleBackup();})
+    .catch(e=>showToast('建立失敗：'+e.message,'err'));
+}
+function deleteSample(id){
+  if(!confirm('確定刪除此樣本？此動作無法復原。'))return;
+  db.collection('samples').doc(id).delete()
+    .then(()=>{showToast('✓ 樣本已刪除');scheduleBackup();})
+    .catch(e=>showToast('刪除失敗：'+e.message,'err'));
+}
+function regenerateRandomSample(id){
+  if(!confirm('確定重新產生隨機資料？目前已填寫的內容將被覆蓋。'))return;
+  db.collection('samples').doc(id).update({rows:generateRandomRows(),updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
+    .then(()=>{showToast('✓ 已重新產生');scheduleBackup();})
+    .catch(e=>showToast('產生失敗：'+e.message,'err'));
+}
+function toggleSample(id){document.getElementById('si-'+id).classList.toggle('open');}
+function updateSampleRowField(sampleId,rowIndex,field,value){
+  const s=samples.find(s=>s.id===sampleId);if(!s)return;
+  if(!s.rows[rowIndex])return;
+  s.rows[rowIndex][field]=value;
+  clearTimeout(sampleSaveTimers[sampleId]);
+  sampleSaveTimers[sampleId]=setTimeout(()=>saveSampleRows(sampleId),700);
+}
+function saveSampleRows(sampleId){
+  const s=samples.find(s=>s.id===sampleId);if(!s)return;
+  db.collection('samples').doc(sampleId).update({rows:s.rows,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
+    .then(()=>scheduleBackup())
+    .catch(e=>showToast('儲存失敗：'+e.message,'err'));
+}
+function payOptionsHtml(selected){
+  return'<option value="">—</option>'+SAMPLE_PAY_OPTIONS.map(p=>`<option value="${p}"${selected===p?' selected':''}>${p}</option>`).join('');
+}
+function buildSampleTableHtml(s){
+  const rowsHtml=s.rows.map((r,i)=>`<tr>
+    <td class="st-seq">${r.seq}</td>
+    <td><input type="number" value="${r.amount??''}" oninput="updateSampleRowField('${s.id}',${i},'amount',this.value?Number(this.value):null)"></td>
+    <td><select onchange="updateSampleRowField('${s.id}',${i},'pay1',this.value||null)">${payOptionsHtml(r.pay1)}</select></td>
+    <td><select onchange="updateSampleRowField('${s.id}',${i},'pay2',this.value||null)">${payOptionsHtml(r.pay2)}</select></td>
+    <td><select onchange="updateSampleRowField('${s.id}',${i},'pay3',this.value||null)">${payOptionsHtml(r.pay3)}</select></td>
+    <td><input type="checkbox" ${r.member?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'member',this.checked)"></td>
+    <td><input type="checkbox" ${r.diplomat?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'diplomat',this.checked)"></td>
+    <td><input type="checkbox" ${r.carrier?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'carrier',this.checked)"></td>
+    <td><input type="checkbox" ${r.taxId?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'taxId',this.checked)"></td>
+    <td><input type="checkbox" ${r.taxFree?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'taxFree',this.checked)"></td>
+    <td><input type="text" inputmode="numeric" maxlength="8" value="${r.invoiceNo??''}" oninput="updateSampleRowField('${s.id}',${i},'invoiceNo',this.value||null)"></td>
+    <td><input type="text" class="st-notes" value="${(r.notes??'').replace(/"/g,'&quot;')}" oninput="updateSampleRowField('${s.id}',${i},'notes',this.value||null)"></td>
+    <td><input type="checkbox" ${r.voided?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'voided',this.checked)"></td>
+  </tr>`).join('');
+  return`<div class="sample-table-wrap"><table class="sample-table">
+    <thead><tr><th>流水號</th><th>消費金額</th><th>支付1</th><th>支付2</th><th>支付3</th><th>會員</th><th>外交官</th><th>載具</th><th>統編</th><th>免稅</th><th>發票號碼</th><th>備註說明</th><th>作廢</th></tr></thead>
+    <tbody>${rowsHtml}</tbody>
+  </table></div>`;
+}
+function renderSamples(){
+  const wrap=document.getElementById('samples-wrap');
+  if(!wrap)return;
+  if(!samples.length){
+    wrap.innerHTML='<div class="empty"><span class="e-icon">🧪</span>尚無驗證樣本，請點選右上角「＋ 新增樣本」建立</div>';
+    return;
+  }
+  wrap.innerHTML=samples.map(s=>{
+    const createdLabel=s.createdAt&&s.createdAt.toDate?s.createdAt.toDate().toLocaleString('zh-TW'):'';
+    return`<div class="sample-card sample-item" id="si-${s.id}">
+      <div class="sample-head" onclick="toggleSample('${s.id}')">
+        <span class="sample-expand">›</span>
+        <div style="flex:1">
+          <div style="display:flex;align-items:center;gap:8px">
+            <span class="sample-title">${s.name}</span>
+            <span class="sample-badge ${s.type}">${s.type==='custom'?'自訂樣本':'隨機樣本'}</span>
+          </div>
+          <div class="sample-meta">共 ${(s.rows||[]).length} 筆交易${createdLabel?'　建立於 '+createdLabel:''}</div>
+        </div>
+        <div class="sample-actions" onclick="event.stopPropagation()">
+          ${s.type==='random'?`<button class="btn btn-outline" onclick="regenerateRandomSample('${s.id}')">🎲 重新產生</button>`:''}
+          <button class="btn btn-outline" style="color:var(--rust);border-color:var(--rust)" onclick="deleteSample('${s.id}')">刪除</button>
+        </div>
+      </div>
+      <div class="sample-detail">${buildSampleTableHtml(s)}</div>
+    </div>`;
+  }).join('');
 }
 
 /* ============ 測試清單匯出 ============ */
