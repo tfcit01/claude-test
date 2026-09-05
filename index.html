@@ -118,6 +118,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .sample-table tr:nth-child(even) td{background:#faf9f6}
 .sample-table .st-seq{font-family:var(--mono);font-size:12px;color:var(--muted);width:44px}
 .sample-table input[type="number"],.sample-table input[type="text"]{width:100%;min-width:70px;border:1px solid var(--border2);border-radius:5px;padding:5px 6px;font-size:12px;font-family:var(--mono);background:var(--panel);text-align:center}
+.sample-table input.st-amount{min-width:56px;max-width:64px}
 .sample-table input[type="text"].st-notes{font-family:var(--sans);text-align:left;min-width:110px}
 .sample-table select{width:100%;min-width:100px;border:1px solid var(--border2);border-radius:5px;padding:5px 4px;font-size:11.5px;background:var(--panel)}
 .sample-table input[type="checkbox"]{width:16px;height:16px;cursor:pointer}
@@ -1010,7 +1011,7 @@ function restoreBackup(id){
 
 /* ============ 驗證樣本 ============ */
 function blankRow(seq){
-  return{seq,amount:null,pay1:null,pay2:null,pay3:null,member:false,diplomat:false,carrier:false,taxId:false,taxFree:false,invoiceNo:null,notes:null,voided:false};
+  return{seq,amount:null,pay1:null,pay2:null,pay3:null,member:false,diplomat:false,carrier:false,taxId:false,taxFree:false,invoiceNo:null,notes:null,voided:false,voidRefSeq:null};
 }
 function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
 function randPick(arr){return arr[Math.floor(Math.random()*arr.length)];}
@@ -1063,7 +1064,12 @@ function regenerateRandomSample(id){
     .then(()=>{showToast('✓ 已重新產生');scheduleBackup();})
     .catch(e=>showToast('產生失敗：'+e.message,'err'));
 }
-function toggleSample(id){document.getElementById('si-'+id).classList.toggle('open');}
+const openSampleIds=new Set();
+function toggleSample(id){
+  if(openSampleIds.has(id))openSampleIds.delete(id);else openSampleIds.add(id);
+  const el=document.getElementById('si-'+id);
+  if(el)el.classList.toggle('open');
+}
 function updateSampleRowField(sampleId,rowIndex,field,value){
   const s=samples.find(s=>s.id===sampleId);if(!s)return;
   if(!s.rows[rowIndex])return;
@@ -1081,9 +1087,11 @@ function payOptionsHtml(selected){
   return'<option value="">—</option>'+SAMPLE_PAY_OPTIONS.map(p=>`<option value="${p}"${selected===p?' selected':''}>${p}</option>`).join('');
 }
 function buildSampleTableHtml(s){
-  const rowsHtml=s.rows.map((r,i)=>`<tr>
+  const rowsHtml=s.rows.map((r,i)=>{
+    const otherSeqOpts=s.rows.filter((rr,ri)=>ri!==i).map(rr=>`<option value="${rr.seq}"${r.voidRefSeq===rr.seq?' selected':''}>${rr.seq}</option>`).join('');
+    return`<tr>
     <td class="st-seq">${r.seq}</td>
-    <td><input type="number" value="${r.amount??''}" oninput="updateSampleRowField('${s.id}',${i},'amount',this.value?Number(this.value):null)"></td>
+    <td><input type="number" class="st-amount" value="${r.amount??''}" oninput="updateSampleRowField('${s.id}',${i},'amount',this.value?Number(this.value):null)"></td>
     <td><select onchange="updateSampleRowField('${s.id}',${i},'pay1',this.value||null)">${payOptionsHtml(r.pay1)}</select></td>
     <td><select onchange="updateSampleRowField('${s.id}',${i},'pay2',this.value||null)">${payOptionsHtml(r.pay2)}</select></td>
     <td><select onchange="updateSampleRowField('${s.id}',${i},'pay3',this.value||null)">${payOptionsHtml(r.pay3)}</select></td>
@@ -1094,23 +1102,39 @@ function buildSampleTableHtml(s){
     <td><input type="checkbox" ${r.taxFree?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'taxFree',this.checked)"></td>
     <td><input type="text" inputmode="numeric" maxlength="8" value="${r.invoiceNo??''}" oninput="updateSampleRowField('${s.id}',${i},'invoiceNo',this.value||null)"></td>
     <td><input type="text" class="st-notes" value="${(r.notes??'').replace(/"/g,'&quot;')}" oninput="updateSampleRowField('${s.id}',${i},'notes',this.value||null)"></td>
-    <td><input type="checkbox" ${r.voided?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'voided',this.checked)"></td>
-  </tr>`).join('');
+    <td>
+      <input type="checkbox" ${r.voided?'checked':''} onchange="onVoidToggle('${s.id}',${i},this)">
+      <select style="display:${r.voided?'inline-block':'none'};margin-top:3px;width:auto;min-width:52px" onchange="updateSampleRowField('${s.id}',${i},'voidRefSeq',this.value||null)">
+        <option value="">流水號</option>${otherSeqOpts}
+      </select>
+    </td>
+  </tr>`;}).join('');
   return`<div class="sample-table-wrap"><table class="sample-table">
     <thead><tr><th>流水號</th><th>消費金額</th><th>支付1</th><th>支付2</th><th>支付3</th><th>會員</th><th>外交官</th><th>載具</th><th>統編</th><th>免稅</th><th>發票號碼</th><th>備註說明</th><th>作廢</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table></div>`;
 }
+function onVoidToggle(sampleId,rowIndex,checkboxEl){
+  const checked=checkboxEl.checked;
+  updateSampleRowField(sampleId,rowIndex,'voided',checked);
+  const selectEl=checkboxEl.nextElementSibling;
+  if(selectEl){
+    selectEl.style.display=checked?'inline-block':'none';
+    if(!checked){selectEl.value='';updateSampleRowField(sampleId,rowIndex,'voidRefSeq',null);}
+  }
+}
 function renderSamples(){
   const wrap=document.getElementById('samples-wrap');
   if(!wrap)return;
+  if(document.activeElement&&wrap.contains(document.activeElement))return;
   if(!samples.length){
     wrap.innerHTML='<div class="empty"><span class="e-icon">🧪</span>尚無驗證樣本，請點選右上角「＋ 新增樣本」建立</div>';
     return;
   }
   wrap.innerHTML=samples.map(s=>{
     const createdLabel=s.createdAt&&s.createdAt.toDate?s.createdAt.toDate().toLocaleString('zh-TW'):'';
-    return`<div class="sample-card sample-item" id="si-${s.id}">
+    const isOpen=openSampleIds.has(s.id);
+    return`<div class="sample-card sample-item${isOpen?' open':''}" id="si-${s.id}">
       <div class="sample-head" onclick="toggleSample('${s.id}')">
         <span class="sample-expand">›</span>
         <div style="flex:1">
@@ -1158,6 +1182,19 @@ function buildCredStripHtml(systemName){
   const rows=(c.fields||[]).map(f=>`<div class="cred-row"><span class="cred-key">${f.label}</span><span class="cred-val${f.pay?' pay':''}">${f.value}</span></div>`).join('');
   return`<div class="cred-pill"><div class="cred-pill-head" style="background:${color}">${c.systemName}</div><div class="cred-pill-body">${rows}</div></div>`;
 }
+function buildSampleUsedCredsHtml(sample){
+  const used=new Set();
+  (sample.rows||[]).forEach(r=>{[r.pay1,r.pay2,r.pay3].forEach(p=>{if(p)used.add(p);});});
+  const pills=[...used].map(name=>{
+    const idx=credentials.findIndex(c=>c.systemName===name);
+    if(idx<0)return null;
+    const c=credentials[idx];
+    const color=CARD_COLORS[idx%CARD_COLORS.length];
+    const rows=(c.fields||[]).map(f=>`<div class="cred-row"><span class="cred-key">${f.label}</span><span class="cred-val${f.pay?' pay':''}">${f.value}</span></div>`).join('');
+    return`<div class="cred-pill"><div class="cred-pill-head" style="background:${color}">${c.systemName}</div><div class="cred-pill-body">${rows}</div></div>`;
+  }).filter(Boolean);
+  return pills.length?pills.join(''):'<div style="font-size:12px;color:#9b9289;padding:8px">此樣本使用的支付方式在系統內皆無對應帳密資料</div>';
+}
 
 function doExport(){
   const t=tasks.find(t=>t.id===currentTaskId);if(!t)return;
@@ -1175,7 +1212,7 @@ function doExport(){
       <td>${ck(r.member)}</td><td>${ck(r.diplomat)}</td><td>${ck(r.carrier)}</td><td>${ck(r.taxId)}</td><td>${ck(r.taxFree)}</td>
       <td>${r.invoiceNo||'－'}</td>
       <td class="td-item">${r.notes||''}</td>
-      <td>${ck(r.voided)}</td>
+      <td>${ck(r.voided)}${r.voided&&r.voidRefSeq?`<div style="font-size:9px;color:#b05a3a;margin-top:2px">對應${r.voidRefSeq}</div>`:''}</td>
       <td class="td-result"></td><td class="td-tester"></td><td class="td-note"></td>
     </tr>`).join('');
   const html=`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8"><title>${t.name} 測試清單</title>
@@ -1183,11 +1220,11 @@ function doExport(){
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans TC',sans-serif;background:#f5f3ef;color:#2c2825;font-size:12px}
-@media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}.page{box-shadow:none;margin:0;border-radius:0;padding:13mm 12mm}@page{size:A4 portrait;margin:0}}
+@media print{body{background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact}.no-print{display:none!important}.page{box-shadow:none;margin:0;border-radius:0;padding:10mm 12mm}@page{size:A4 landscape;margin:0}}
 .no-print{position:fixed;top:16px;right:16px;z-index:99;display:flex;gap:8px}
 .btn-print{background:#5c7a6e;color:#fff;border:none;padding:10px 22px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;font-family:'Noto Sans TC',sans-serif}
 .btn-close{background:#fff;color:#5a5450;border:1px solid #cdc7bc;padding:10px 18px;border-radius:7px;font-size:13px;cursor:pointer;font-family:'Noto Sans TC',sans-serif}
-.page{max-width:210mm;margin:20px auto;background:#fff;box-shadow:0 4px 32px rgba(44,40,37,.1);border-radius:10px;padding:15mm 13mm 12mm}
+.page{max-width:287mm;margin:20px auto;background:#fff;box-shadow:0 4px 32px rgba(44,40,37,.1);border-radius:10px;padding:12mm 14mm}
 .report-header{border:1.5px solid #5c7a6e;border-radius:8px;overflow:hidden;margin-bottom:14px;display:flex}
 .header-accent{width:7px;background:linear-gradient(180deg,#5c7a6e,#a8c4bb);flex-shrink:0}
 .header-body{flex:1;padding:12px 16px}
@@ -1212,8 +1249,9 @@ thead th{color:#fff;font-weight:600;font-size:10px;padding:8px 6px;text-align:ce
 thead th:last-child{border-right:none}
 thead th.th-item{text-align:left;padding-left:10px}
 .col-no{width:24px}.col-pos{width:52px}.col-result{width:42px}.col-tester{width:52px}.col-note{width:68px}
-tbody tr{border-bottom:1px solid #ede9e3}
-tbody td{padding:6px;text-align:center;font-size:11px;vertical-align:middle}
+tbody tr{border-bottom:1px solid #cdc7bc}
+tbody td{padding:6px;text-align:center;font-size:11px;vertical-align:middle;border-right:1px solid #ddd7cd}
+tbody td:last-child{border-right:none}
 tbody td.td-no{color:#9b9289;font-family:'DM Mono',monospace;font-size:10px}
 tbody td.td-item{text-align:left;padding-left:10px;line-height:1.5}
 tbody td.td-result{background:#faf5e8}
@@ -1255,7 +1293,7 @@ td.dash{background:#f5f3ef;color:#c5bfb8}
       </div>
     </div>
   </div>
-  <div class="creds-strip">${buildCredStripHtml(t.system)}</div>
+  <div class="creds-strip">${buildSampleUsedCredsHtml(sample)}</div>
   <div class="table-wrap"><table>
     <colgroup><col style="width:34px"><col style="width:56px"><col><col><col><col style="width:32px"><col style="width:38px"><col style="width:32px"><col style="width:32px"><col style="width:32px"><col style="width:56px"><col><col style="width:32px"><col class="col-result"><col class="col-tester"><col class="col-note"></colgroup>
     <thead><tr><th>流水號</th><th>消費金額</th><th>支付1</th><th>支付2</th><th>支付3</th><th>會員</th><th>外交官</th><th>載具</th><th>統編</th><th>免稅</th><th>發票號碼</th><th class="th-item">備註說明</th><th>作廢</th><th>結果</th><th>測試人員</th><th>備註</th></tr></thead>
