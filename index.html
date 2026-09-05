@@ -1030,6 +1030,9 @@ function enforceCashLast(r){
     r.pay3=ordered[2]||null;
   }
 }
+function enforceStoredValueMember(r){
+  if(r.pay1==='購物金'||r.pay2==='購物金'||r.pay3==='購物金')r.member=true;
+}
 function generateRandomRows(){
   const rows=[];
   for(let i=1;i<=SAMPLE_ROW_COUNT;i++){
@@ -1044,6 +1047,7 @@ function generateRandomRows(){
     r.diplomat=Math.random()<0.5;
     r.carrier=Math.random()<0.5;
     r.taxId=Math.random()<0.5;
+    enforceStoredValueMember(r);
     rows.push(r);
   }
   return rows;
@@ -1087,12 +1091,15 @@ function updateSampleRowField(sampleId,rowIndex,field,value){
   row[field]=value;
   if(field==='pay1'||field==='pay2'||field==='pay3'){
     enforceCashLast(row);
+    enforceStoredValueMember(row);
     const p1=document.getElementById(`samp-${sampleId}-${rowIndex}-pay1`);
     const p2=document.getElementById(`samp-${sampleId}-${rowIndex}-pay2`);
     const p3=document.getElementById(`samp-${sampleId}-${rowIndex}-pay3`);
+    const memCb=document.getElementById(`samp-${sampleId}-${rowIndex}-member`);
     if(p1)p1.value=row.pay1||'';
     if(p2)p2.value=row.pay2||'';
     if(p3)p3.value=row.pay3||'';
+    if(memCb)memCb.checked=!!row.member;
   }
   clearTimeout(sampleSaveTimers[sampleId]);
   sampleSaveTimers[sampleId]=setTimeout(()=>saveSampleRows(sampleId),700);
@@ -1111,17 +1118,17 @@ function buildSampleTableHtml(s){
     const otherSeqOpts=s.rows.filter((rr,ri)=>ri<i).map(rr=>`<option value="${rr.seq}"${r.voidRefSeq===rr.seq?' selected':''}>${rr.seq}</option>`).join('');
     return`<tr>
     <td class="st-seq">${r.seq}</td>
-    <td><input type="number" class="st-amount" value="${r.amount??''}" oninput="updateSampleRowField('${s.id}',${i},'amount',this.value?Number(this.value):null)"></td>
+    <td><input type="number" class="st-amount" id="samp-${s.id}-${i}-amount" value="${r.amount??''}" oninput="updateSampleRowField('${s.id}',${i},'amount',this.value?Number(this.value):null)"></td>
     <td><select id="samp-${s.id}-${i}-pay1" onchange="updateSampleRowField('${s.id}',${i},'pay1',this.value||null)">${payOptionsHtml(r.pay1)}</select></td>
     <td><select id="samp-${s.id}-${i}-pay2" onchange="updateSampleRowField('${s.id}',${i},'pay2',this.value||null)">${payOptionsHtml(r.pay2)}</select></td>
     <td><select id="samp-${s.id}-${i}-pay3" onchange="updateSampleRowField('${s.id}',${i},'pay3',this.value||null)">${payOptionsHtml(r.pay3)}</select></td>
-    <td><input type="checkbox" ${r.member?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'member',this.checked)"></td>
-    <td><input type="checkbox" ${r.diplomat?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'diplomat',this.checked)"></td>
-    <td><input type="checkbox" ${r.carrier?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'carrier',this.checked)"></td>
-    <td><input type="checkbox" ${r.taxId?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'taxId',this.checked)"></td>
-    <td><input type="checkbox" ${r.taxFree?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'taxFree',this.checked)"></td>
-    <td><input type="text" inputmode="numeric" maxlength="8" value="${r.invoiceNo??''}" oninput="updateSampleRowField('${s.id}',${i},'invoiceNo',this.value||null)"></td>
-    <td><input type="text" class="st-notes" value="${(r.notes??'').replace(/"/g,'&quot;')}" oninput="updateSampleRowField('${s.id}',${i},'notes',this.value||null)"></td>
+    <td><input type="checkbox" id="samp-${s.id}-${i}-member" ${r.member?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'member',this.checked)"></td>
+    <td><input type="checkbox" id="samp-${s.id}-${i}-diplomat" ${r.diplomat?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'diplomat',this.checked)"></td>
+    <td><input type="checkbox" id="samp-${s.id}-${i}-carrier" ${r.carrier?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'carrier',this.checked)"></td>
+    <td><input type="checkbox" id="samp-${s.id}-${i}-taxId" ${r.taxId?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'taxId',this.checked)"></td>
+    <td><input type="checkbox" id="samp-${s.id}-${i}-taxFree" ${r.taxFree?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'taxFree',this.checked)"></td>
+    <td><input type="text" inputmode="numeric" maxlength="8" id="samp-${s.id}-${i}-invoiceNo" value="${r.invoiceNo??''}" oninput="updateSampleRowField('${s.id}',${i},'invoiceNo',this.value||null)"></td>
+    <td><input type="text" class="st-notes" id="samp-${s.id}-${i}-notes" value="${(r.notes??'').replace(/"/g,'&quot;')}" oninput="updateSampleRowField('${s.id}',${i},'notes',this.value||null)"></td>
     <td>
       <input type="checkbox" ${r.voided?'checked':''} onchange="onVoidToggle('${s.id}',${i},this)">
       <select style="display:${r.voided?'inline-block':'none'};margin-top:3px;width:auto;min-width:52px" onchange="updateSampleRowField('${s.id}',${i},'voidRefSeq',this.value||null)">
@@ -1142,11 +1149,29 @@ function onVoidToggle(sampleId,rowIndex,checkboxEl){
     selectEl.style.display=checked?'inline-block':'none';
     if(!checked){selectEl.value='';updateSampleRowField(sampleId,rowIndex,'voidRefSeq',null);}
   }
+  if(checked){
+    const s=samples.find(s=>s.id===sampleId);
+    const row=s?s.rows[rowIndex]:null;
+    if(row){
+      row.amount=null;row.pay1=null;row.pay2=null;row.pay3=null;
+      row.member=false;row.diplomat=false;row.carrier=false;row.taxId=false;row.taxFree=false;
+      row.invoiceNo=null;row.notes=null;
+    }
+    const prefix=`samp-${sampleId}-${rowIndex}-`;
+    const amtEl=document.getElementById(prefix+'amount');if(amtEl)amtEl.value='';
+    ['pay1','pay2','pay3'].forEach(f=>{const el=document.getElementById(prefix+f);if(el)el.value='';});
+    ['member','diplomat','carrier','taxId','taxFree'].forEach(f=>{const el=document.getElementById(prefix+f);if(el)el.checked=false;});
+    const invEl=document.getElementById(prefix+'invoiceNo');if(invEl)invEl.value='';
+    const noteEl=document.getElementById(prefix+'notes');if(noteEl)noteEl.value='';
+    clearTimeout(sampleSaveTimers[sampleId]);
+    sampleSaveTimers[sampleId]=setTimeout(()=>saveSampleRows(sampleId),700);
+  }
 }
 function renderSamples(){
   const wrap=document.getElementById('samples-wrap');
   if(!wrap)return;
-  if(document.activeElement&&wrap.contains(document.activeElement))return;
+  const ae=document.activeElement;
+  if(ae&&wrap.contains(ae)&&ae.tagName==='INPUT'&&(ae.type==='text'||ae.type==='number'))return;
   if(!samples.length){
     wrap.innerHTML='<div class="empty"><span class="e-icon">🧪</span>尚無驗證樣本，請點選右上角「＋ 新增樣本」建立</div>';
     return;
