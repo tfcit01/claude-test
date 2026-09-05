@@ -1020,6 +1020,16 @@ function generateCustomRows(){
   for(let i=1;i<=SAMPLE_ROW_COUNT;i++)rows.push(blankRow(String(i).padStart(3,'0')));
   return rows;
 }
+function enforceCashLast(r){
+  const vals=[r.pay1,r.pay2,r.pay3].filter(v=>v);
+  if(vals.includes('現金')){
+    const others=vals.filter(v=>v!=='現金');
+    const ordered=[...others,'現金'];
+    r.pay1=ordered[0]||null;
+    r.pay2=ordered[1]||null;
+    r.pay3=ordered[2]||null;
+  }
+}
 function generateRandomRows(){
   const rows=[];
   for(let i=1;i<=SAMPLE_ROW_COUNT;i++){
@@ -1029,6 +1039,7 @@ function generateRandomRows(){
     const shuffled=[...SAMPLE_PAY_OPTIONS].sort(()=>Math.random()-0.5);
     const slots=['pay1','pay2','pay3'];
     for(let k=0;k<payCount;k++)r[slots[k]]=shuffled[k];
+    enforceCashLast(r);
     r.member=Math.random()<0.5;
     r.diplomat=Math.random()<0.5;
     r.carrier=Math.random()<0.5;
@@ -1072,8 +1083,17 @@ function toggleSample(id){
 }
 function updateSampleRowField(sampleId,rowIndex,field,value){
   const s=samples.find(s=>s.id===sampleId);if(!s)return;
-  if(!s.rows[rowIndex])return;
-  s.rows[rowIndex][field]=value;
+  const row=s.rows[rowIndex];if(!row)return;
+  row[field]=value;
+  if(field==='pay1'||field==='pay2'||field==='pay3'){
+    enforceCashLast(row);
+    const p1=document.getElementById(`samp-${sampleId}-${rowIndex}-pay1`);
+    const p2=document.getElementById(`samp-${sampleId}-${rowIndex}-pay2`);
+    const p3=document.getElementById(`samp-${sampleId}-${rowIndex}-pay3`);
+    if(p1)p1.value=row.pay1||'';
+    if(p2)p2.value=row.pay2||'';
+    if(p3)p3.value=row.pay3||'';
+  }
   clearTimeout(sampleSaveTimers[sampleId]);
   sampleSaveTimers[sampleId]=setTimeout(()=>saveSampleRows(sampleId),700);
 }
@@ -1088,13 +1108,13 @@ function payOptionsHtml(selected){
 }
 function buildSampleTableHtml(s){
   const rowsHtml=s.rows.map((r,i)=>{
-    const otherSeqOpts=s.rows.filter((rr,ri)=>ri!==i).map(rr=>`<option value="${rr.seq}"${r.voidRefSeq===rr.seq?' selected':''}>${rr.seq}</option>`).join('');
+    const otherSeqOpts=s.rows.filter((rr,ri)=>ri<i).map(rr=>`<option value="${rr.seq}"${r.voidRefSeq===rr.seq?' selected':''}>${rr.seq}</option>`).join('');
     return`<tr>
     <td class="st-seq">${r.seq}</td>
     <td><input type="number" class="st-amount" value="${r.amount??''}" oninput="updateSampleRowField('${s.id}',${i},'amount',this.value?Number(this.value):null)"></td>
-    <td><select onchange="updateSampleRowField('${s.id}',${i},'pay1',this.value||null)">${payOptionsHtml(r.pay1)}</select></td>
-    <td><select onchange="updateSampleRowField('${s.id}',${i},'pay2',this.value||null)">${payOptionsHtml(r.pay2)}</select></td>
-    <td><select onchange="updateSampleRowField('${s.id}',${i},'pay3',this.value||null)">${payOptionsHtml(r.pay3)}</select></td>
+    <td><select id="samp-${s.id}-${i}-pay1" onchange="updateSampleRowField('${s.id}',${i},'pay1',this.value||null)">${payOptionsHtml(r.pay1)}</select></td>
+    <td><select id="samp-${s.id}-${i}-pay2" onchange="updateSampleRowField('${s.id}',${i},'pay2',this.value||null)">${payOptionsHtml(r.pay2)}</select></td>
+    <td><select id="samp-${s.id}-${i}-pay3" onchange="updateSampleRowField('${s.id}',${i},'pay3',this.value||null)">${payOptionsHtml(r.pay3)}</select></td>
     <td><input type="checkbox" ${r.member?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'member',this.checked)"></td>
     <td><input type="checkbox" ${r.diplomat?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'diplomat',this.checked)"></td>
     <td><input type="checkbox" ${r.carrier?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'carrier',this.checked)"></td>
@@ -1245,7 +1265,7 @@ body{font-family:'Noto Sans TC',sans-serif;background:#f5f3ef;color:#2c2825;font
 .table-wrap{border-radius:7px;overflow:hidden;border:1.5px solid #a8c4bb}
 table{width:100%;border-collapse:collapse}
 thead tr{background:#5c7a6e}
-thead th{color:#fff;font-weight:600;font-size:10px;padding:8px 6px;text-align:center;letter-spacing:.04em;border-right:1px solid #6d8c80}
+thead th{color:#fff;font-weight:600;font-size:10px;padding:8px 4px;text-align:center;letter-spacing:.04em;border-right:1px solid #6d8c80;white-space:nowrap}
 thead th:last-child{border-right:none}
 thead th.th-item{text-align:left;padding-left:10px}
 .col-no{width:24px}.col-pos{width:52px}.col-result{width:42px}.col-tester{width:52px}.col-note{width:68px}
@@ -1295,7 +1315,7 @@ td.dash{background:#f5f3ef;color:#c5bfb8}
   </div>
   <div class="creds-strip">${buildSampleUsedCredsHtml(sample)}</div>
   <div class="table-wrap"><table>
-    <colgroup><col style="width:34px"><col style="width:56px"><col><col><col><col style="width:32px"><col style="width:38px"><col style="width:32px"><col style="width:32px"><col style="width:32px"><col style="width:56px"><col><col style="width:32px"><col class="col-result"><col class="col-tester"><col class="col-note"></colgroup>
+    <colgroup><col style="width:32px"><col style="width:50px"><col style="width:64px"><col style="width:64px"><col style="width:64px"><col style="width:38px"><col style="width:42px"><col style="width:38px"><col style="width:38px"><col style="width:38px"><col style="width:56px"><col><col style="width:44px"><col class="col-result"><col class="col-tester"><col class="col-note"></colgroup>
     <thead><tr><th>流水號</th><th>消費金額</th><th>支付1</th><th>支付2</th><th>支付3</th><th>會員</th><th>外交官</th><th>載具</th><th>統編</th><th>免稅</th><th>發票號碼</th><th class="th-item">備註說明</th><th>作廢</th><th>結果</th><th>測試人員</th><th>備註</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table></div>
