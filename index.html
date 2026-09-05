@@ -1135,11 +1135,19 @@ function buildSampleTableHtml(s){
         <option value="">流水號</option>${otherSeqOpts}
       </select>
     </td>
+    <td><button class="field-del-btn" title="刪除此筆交易" onclick="deleteSampleRow('${s.id}',${i})">✕</button></td>
   </tr>`;}).join('');
   return`<div class="sample-table-wrap"><table class="sample-table">
-    <thead><tr><th>流水號</th><th>消費金額</th><th>支付1</th><th>支付2</th><th>支付3</th><th>會員</th><th>外交官</th><th>載具</th><th>統編</th><th>免稅</th><th>發票號碼</th><th>備註說明</th><th>作廢</th></tr></thead>
+    <thead><tr><th>流水號</th><th>消費金額</th><th>支付1</th><th>支付2</th><th>支付3</th><th>會員</th><th>外交官</th><th>載具</th><th>統編</th><th>免稅</th><th>發票號碼</th><th>備註說明</th><th>作廢</th><th>刪除</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table></div>`;
+}
+function deleteSampleRow(sampleId,rowIndex){
+  const s=samples.find(s=>s.id===sampleId);if(!s)return;
+  if(!confirm(`確定刪除流水號 ${s.rows[rowIndex].seq} 這筆交易？`))return;
+  s.rows.splice(rowIndex,1);
+  saveSampleRows(sampleId);
+  renderSamples();
 }
 function onVoidToggle(sampleId,rowIndex,checkboxEl){
   const checked=checkboxEl.checked;
@@ -1258,7 +1266,7 @@ function doExport(){
       <td>${r.invoiceNo||'－'}</td>
       <td class="td-item">${r.notes||''}</td>
       <td>${ck(r.voided)}${r.voided&&r.voidRefSeq?`<div style="font-size:9px;color:#b05a3a;margin-top:2px">對應${r.voidRefSeq}</div>`:''}</td>
-      <td class="td-result"></td><td class="td-tester"></td><td class="td-note"></td>
+      <td class="td-result"></td>
     </tr>`).join('');
   const html=`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8"><title>${t.name} 測試清單</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Noto+Sans+TC:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -1340,8 +1348,8 @@ td.dash{background:#f5f3ef;color:#c5bfb8}
   </div>
   <div class="creds-strip">${buildSampleUsedCredsHtml(sample)}</div>
   <div class="table-wrap"><table>
-    <colgroup><col style="width:32px"><col style="width:50px"><col style="width:64px"><col style="width:64px"><col style="width:64px"><col style="width:38px"><col style="width:42px"><col style="width:38px"><col style="width:38px"><col style="width:38px"><col style="width:56px"><col><col style="width:44px"><col class="col-result"><col class="col-tester"><col class="col-note"></colgroup>
-    <thead><tr><th>流水號</th><th>消費金額</th><th>支付1</th><th>支付2</th><th>支付3</th><th>會員</th><th>外交官</th><th>載具</th><th>統編</th><th>免稅</th><th>發票號碼</th><th class="th-item">備註說明</th><th>作廢</th><th>結果</th><th>測試人員</th><th>備註</th></tr></thead>
+    <colgroup><col style="width:32px"><col style="width:50px"><col style="width:64px"><col style="width:64px"><col style="width:64px"><col style="width:38px"><col style="width:42px"><col style="width:38px"><col style="width:38px"><col style="width:38px"><col style="width:56px"><col><col style="width:44px"><col class="col-result"></colgroup>
+    <thead><tr><th>流水號</th><th>消費金額</th><th>支付1</th><th>支付2</th><th>支付3</th><th>會員</th><th>外交官</th><th>載具</th><th>統編</th><th>免稅</th><th>發票號碼</th><th class="th-item">備註說明</th><th>作廢</th><th>結果</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table></div>
   <div class="report-footer">
