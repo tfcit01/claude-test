@@ -318,11 +318,17 @@ a{color:var(--sage);font-size:11px}
       <div class="sec-hd"><span class="sec-title">新增測試任務</span><div class="sec-line"></div></div>
       <div class="task-form">
         <div class="form-sub">// NEW TASK</div>
-        <div class="f-group" style="margin-bottom:12px">
-          <label class="f-label">任務名稱</label>
-          <input class="f-input" id="f-name" placeholder="e.g. 台新PAY 結帳流程測試" />
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div class="f-group">
+            <label class="f-label">任務名稱</label>
+            <input class="f-input" id="f-name" placeholder="e.g. 台新PAY 結帳流程測試" />
+          </div>
+          <div class="f-group">
+            <label class="f-label">測試目的 <span style="color:var(--rust)">＊必填</span></label>
+            <input class="f-input" id="f-purpose" placeholder="e.g. 驗證刷卡機更換後結帳流程是否正常" />
+          </div>
         </div>
-        <div style="display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr 1.7fr 1.7fr;gap:10px;margin-bottom:12px">
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1.6fr 1.6fr;gap:10px;margin-bottom:12px">
           <div class="f-group">
             <label class="f-label">狀態</label>
             <div class="status-sel" id="f-status-sel">
@@ -347,27 +353,12 @@ a{color:var(--sage);font-size:11px}
           </div>
           <div class="f-group">
             <label class="f-label">測試人員</label>
-            <div class="members-wrap" id="members-wrap" style="margin-top:2px;gap:4px">
-              <div class="member-chip" onclick="toggleMember(this,'Daniel')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Daniel</div>
-              <div class="member-chip" onclick="toggleMember(this,'JiaJie')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>JiaJie</div>
-              <div class="member-chip" onclick="toggleMember(this,'Sam')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Sam</div>
-              <div class="member-chip" onclick="toggleMember(this,'Kai')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Kai</div>
-              <div class="member-chip" onclick="toggleMember(this,'Luna')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>Luna</div>
-            </div>
+            <div class="members-wrap" id="members-wrap" style="margin-top:2px;gap:4px"></div>
           </div>
           <div class="f-group">
             <label class="f-label">配合窗口</label>
-            <div class="contacts-wrap" id="contacts-wrap" style="margin-top:2px;gap:4px">
-              <div class="contact-chip" onclick="toggleContact(this,'銷售組')" style="padding:3px 10px;font-size:12px">銷售組</div>
-              <div class="contact-chip" onclick="toggleContact(this,'OB票務')" style="padding:3px 10px;font-size:12px">OB票務</div>
-              <div class="contact-chip" onclick="toggleContact(this,'OB紀念品')" style="padding:3px 10px;font-size:12px">OB紀念品</div>
-              <div class="contact-chip" onclick="toggleContact(this,'商場帳務')" style="padding:3px 10px;font-size:12px">商場帳務</div>
-            </div>
+            <div class="contacts-wrap" id="contacts-wrap" style="margin-top:2px;gap:4px"></div>
           </div>
-        </div>
-        <div class="f-group">
-          <label class="f-label">備註</label>
-          <input class="f-input" id="f-notes" placeholder="選填" />
         </div>
         <div class="btn-row">
           <button class="btn btn-primary" onclick="addTask()">＋ 新增任務</button>
@@ -505,12 +496,12 @@ let backups = [];
 let samples = [];
 let formStatus='todo', selectedMembers=[], selectedContacts=[], currentTaskId=null;
 let editingCredId=null, editingCredFields=[];
-let unsubTasks=null, unsubCreds=null, unsubBackups=null, unsubSamples=null;
+let unsubTasks=null, unsubCreds=null, unsubBackups=null, unsubSamples=null, unsubTaskOptions=null;
 let backupTimer=null;
 let sampleSaveTimers={};
 
-const MEMBERS=['Daniel','JiaJie','Sam','Kai','Luna'];
-const CONTACTS=['銷售組','OB票務','OB紀念品','商場帳務'];
+let MEMBERS=['Daniel','JiaJie','Sam','Kai','Luna'];
+let CONTACTS=['銷售組','OB票務','OB紀念品','商場帳務'];
 const OTHER_SYSTEMS=['中信刷卡','聯信刷卡','悠遊卡','現金','購物金','電子禮券','抵用券'];
 const CARD_COLORS=['#b05a3a','#4a6fa5','#5c7a6e','#8b7355','#6a5a8b','#3a8fa0','#a0673a','#7a8a3a'];
 const SAMPLE_PAY_OPTIONS=['中信刷卡','連信刷卡','購物金','101PAY','LINEPAY','街口支付','台新PAY','台灣PAY','電子商品禮券','電子現金禮券','抵用券','宜睿即享券','現金'];
@@ -533,6 +524,7 @@ function doLogin(){
 document.addEventListener('DOMContentLoaded',()=>{
   const pwEl=document.getElementById('login-pw');
   if(pwEl)pwEl.addEventListener('keydown',e=>{if(e.key==='Enter')doLogin();});
+  renderMemberChips();renderContactChips();
 });
 function showLoginError(msg){const e=document.getElementById('login-err');e.textContent=msg;e.style.display='block';}
 function setLoginLoading(b){const btn=document.getElementById('login-btn');btn.disabled=b;btn.textContent=b?'登入中…':'登入';}
@@ -555,6 +547,17 @@ auth.onAuthStateChanged(user=>{
 
 /* ============ Firestore 即時同步 ============ */
 function startListeners(){
+  unsubTaskOptions=db.collection('meta').doc('taskOptions').onSnapshot(doc=>{
+    if(doc.exists){
+      const d=doc.data();
+      if(Array.isArray(d.members)&&d.members.length)MEMBERS=d.members;
+      if(Array.isArray(d.contacts)&&d.contacts.length)CONTACTS=d.contacts;
+    }else{
+      db.collection('meta').doc('taskOptions').set({members:MEMBERS,contacts:CONTACTS}).catch(()=>{});
+    }
+    render();
+  },err=>{console.error(err);});
+
   unsubTasks=db.collection('tasks').orderBy('createdAt','desc').onSnapshot(snap=>{
     tasks=snap.docs.map(d=>({id:d.id,...d.data()}));
     render();
@@ -582,8 +585,22 @@ function stopListeners(){
   if(unsubCreds)unsubCreds();
   if(unsubBackups)unsubBackups();
   if(unsubSamples)unsubSamples();
-  unsubTasks=unsubCreds=unsubBackups=unsubSamples=null;
+  if(unsubTaskOptions)unsubTaskOptions();
+  unsubTasks=unsubCreds=unsubBackups=unsubSamples=unsubTaskOptions=null;
   tasks=[];credentials=[];backups=[];samples=[];
+}
+
+function addTaskOption(kind){
+  const label=kind==='members'?'測試人員':'配合窗口';
+  const name=prompt(`請輸入新的${label}名稱：`);
+  if(!name||!name.trim())return;
+  const trimmed=name.trim();
+  const list=kind==='members'?MEMBERS:CONTACTS;
+  if(list.includes(trimmed)){showToast('此名稱已存在','err');return;}
+  const newList=[...list,trimmed];
+  db.collection('meta').doc('taskOptions').set({[kind]:newList},{merge:true})
+    .then(()=>{showToast('✓ 已新增「'+trimmed+'」');scheduleBackup();})
+    .catch(e=>showToast('新增失敗：'+e.message,'err'));
 }
 
 /* ============ 導覽切換 ============ */
@@ -608,11 +625,22 @@ function setFormStatus(s){
 }
 function toggleMember(el,name){el.classList.toggle('active');if(el.classList.contains('active'))selectedMembers.push(name);else selectedMembers=selectedMembers.filter(m=>m!==name);}
 function toggleContact(el,name){el.classList.toggle('active');if(el.classList.contains('active'))selectedContacts.push(name);else selectedContacts=selectedContacts.filter(c=>c!==name);}
+function renderMemberChips(){
+  const wrap=document.getElementById('members-wrap');
+  if(!wrap)return;
+  wrap.innerHTML=MEMBERS.map(m=>`<div class="member-chip${selectedMembers.includes(m)?' active':''}" onclick="toggleMember(this,'${m}')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>${m}</div>`).join('')
+    +`<div class="member-chip" onclick="addTaskOption('members')" style="padding:3px 10px;font-size:12px;border-style:dashed;color:var(--muted)">＋新增</div>`;
+}
+function renderContactChips(){
+  const wrap=document.getElementById('contacts-wrap');
+  if(!wrap)return;
+  wrap.innerHTML=CONTACTS.map(c=>`<div class="contact-chip${selectedContacts.includes(c)?' active':''}" onclick="toggleContact(this,'${c}')" style="padding:3px 10px;font-size:12px">${c}</div>`).join('')
+    +`<div class="contact-chip" onclick="addTaskOption('contacts')" style="padding:3px 10px;font-size:12px;border-style:dashed;color:var(--muted)">＋新增</div>`;
+}
 function clearForm(){
-  ['f-name','f-system','f-start','f-end','f-notes'].forEach(id=>{document.getElementById(id).value='';});
+  ['f-name','f-purpose','f-system','f-start','f-end'].forEach(id=>{document.getElementById(id).value='';});
   selectedMembers=[];selectedContacts=[];
-  document.querySelectorAll('.member-chip').forEach(c=>c.classList.remove('active'));
-  document.querySelectorAll('.contact-chip').forEach(c=>c.classList.remove('active'));
+  renderMemberChips();renderContactChips();
   setFormStatus('todo');
 }
 
@@ -641,13 +669,15 @@ function getNextTaskCode(){
 /* ============ 任務 CRUD（Firestore） ============ */
 function addTask(){
   const name=document.getElementById('f-name').value.trim();
+  const purpose=document.getElementById('f-purpose').value.trim();
   if(!name){showToast('請輸入任務名稱','err');return;}
+  if(!purpose){showToast('請填寫測試目的','err');return;}
   getNextTaskCode().then(code=>{
     const data={
       code,name,status:formStatus,system:document.getElementById('f-system').value,
       start:document.getElementById('f-start').value,end:document.getElementById('f-end').value,
       members:[...selectedMembers],contacts:[...selectedContacts],
-      notes:document.getElementById('f-notes').value.trim(),
+      purpose,
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),
       updatedAt:firebase.firestore.FieldValue.serverTimestamp()
     };
@@ -658,11 +688,13 @@ function addTask(){
 
 function saveEdit(id){
   const n=document.getElementById(`e-name-${id}`).value.trim();
+  const purpose=document.getElementById(`e-purpose-${id}`).value.trim();
+  if(!purpose){showToast('請填寫測試目的','err');return;}
   const data={
     system:document.getElementById(`e-sys-${id}`).value,
     start:document.getElementById(`e-start-${id}`).value,
     end:document.getElementById(`e-end-${id}`).value,
-    notes:document.getElementById(`e-notes-${id}`).value.trim(),
+    purpose,
     members:MEMBERS.filter(m=>document.getElementById(`em-${id}-${m}`)?.classList.contains('active-m')),
     contacts:CONTACTS.filter(c=>document.getElementById(`ec-${id}-${c}`)?.classList.contains('active-c')),
     updatedAt:firebase.firestore.FieldValue.serverTimestamp()
@@ -814,6 +846,8 @@ function render(){
   </div>`;
 
   renderGantt();
+  renderMemberChips();
+  renderContactChips();
 
   if(!tasks.length){list.innerHTML=EMPTY_HTML;return;}
 
@@ -823,8 +857,8 @@ function render(){
   tasks.forEach(t=>{
     try{
       const si=statusInfo(t.status);
-      const mChips=MEMBERS.map(m=>`<span id="em-${t.id}-${m}" class="edit-chip${(t.members||[]).includes(m)?' active-m':''}" onclick="this.classList.toggle('active-m')">${m}</span>`).join('');
-      const cChips=CONTACTS.map(c=>`<span id="ec-${t.id}-${c}" class="edit-chip${(t.contacts||[]).includes(c)?' active-c':''}" onclick="this.classList.toggle('active-c')">${c}</span>`).join('');
+      const mChips=MEMBERS.map(m=>`<span id="em-${t.id}-${m}" class="edit-chip${(t.members||[]).includes(m)?' active-m':''}" onclick="this.classList.toggle('active-m')">${m}</span>`).join('')+`<span class="edit-chip" style="border-style:dashed;color:var(--muted)" onclick="addTaskOption('members')">＋新增</span>`;
+      const cChips=CONTACTS.map(c=>`<span id="ec-${t.id}-${c}" class="edit-chip${(t.contacts||[]).includes(c)?' active-c':''}" onclick="this.classList.toggle('active-c')">${c}</span>`).join('')+`<span class="edit-chip" style="border-style:dashed;color:var(--muted)" onclick="addTaskOption('contacts')">＋新增</span>`;
       const sysOpts=sysOptions.map(s=>`<option value="${s}"${t.system===s?' selected':''}>${s||'— 選擇 —'}</option>`).join('');
       rowsHtml.push(`
     <div class="task-item" id="ti-${t.id}">
@@ -843,7 +877,8 @@ function render(){
       </div>
       <div class="task-detail">
         <div class="edit-grid">
-          <div class="eg-full"><div class="edit-label">任務名稱</div><input class="edit-input" id="e-name-${t.id}" value="${(t.name||'').replace(/"/g,'&quot;')}" /></div>
+          <div><div class="edit-label">任務名稱</div><input class="edit-input" id="e-name-${t.id}" value="${(t.name||'').replace(/"/g,'&quot;')}" /></div>
+          <div><div class="edit-label">測試目的 <span style="color:var(--rust)">＊必填</span></div><input class="edit-input" id="e-purpose-${t.id}" value="${(t.purpose||t.notes||'').replace(/"/g,'&quot;')}" placeholder="必填" /></div>
           <div><div class="edit-label">狀態</div>
             <div class="edit-status">
               <div id="es-${t.id}-todo" class="es-opt${t.status==='todo'?' es-todo':''}" onclick="setEditStatus('${t.id}','todo')">未開始</div>
@@ -854,9 +889,8 @@ function render(){
           <div><div class="edit-label">支付功能</div><select class="edit-select" id="e-sys-${t.id}">${sysOpts}</select></div>
           <div><div class="edit-label">開始日期</div><input class="edit-input" id="e-start-${t.id}" type="date" value="${t.start||''}" /></div>
           <div><div class="edit-label">結束日期</div><input class="edit-input" id="e-end-${t.id}" type="date" value="${t.end||''}" /></div>
-          <div class="eg-full"><div class="edit-label">測試人員</div><div class="edit-chips">${mChips}</div></div>
-          <div class="eg-full"><div class="edit-label">配合窗口</div><div class="edit-chips">${cChips}</div></div>
-          <div class="eg-full"><div class="edit-label">備註</div><input class="edit-input" id="e-notes-${t.id}" value="${(t.notes||'').replace(/"/g,'&quot;')}" placeholder="選填" /></div>
+          <div><div class="edit-label">測試人員</div><div class="edit-chips">${mChips}</div></div>
+          <div><div class="edit-label">配合窗口</div><div class="edit-chips">${cChips}</div></div>
         </div>
         ${(t.sampleRuns&&t.sampleRuns.length)?`<div style="font-size:12px;color:var(--muted);padding:8px 0;border-top:1px solid var(--border)">
           📊 已產生測試清單 <strong style="color:var(--ink)">${t.sampleRuns.length}</strong> 次
@@ -1265,7 +1299,7 @@ function doExport(){
       <td>${ck(r.member)}</td><td>${ck(r.diplomat)}</td><td>${ck(r.carrier)}</td><td>${ck(r.taxId)}</td><td>${ck(r.taxFree)}</td>
       <td>${r.invoiceNo||''}</td>
       <td class="td-item">${r.notes||''}</td>
-      <td>${ck(r.voided)}${r.voided&&r.voidRefSeq?`<div style="font-size:9px;color:#b05a3a;margin-top:2px">對應${r.voidRefSeq}</div>`:''}</td>
+      <td>${ck(r.voided)}${r.voided&&r.voidRefSeq?`<div style="font-size:9px;color:#b05a3a;margin-top:2px">${r.voidRefSeq}</div>`:''}</td>
       <td class="td-result"></td>
     </tr>`).join('');
   const html=`<!DOCTYPE html><html lang="zh-TW"><head><meta charset="UTF-8"><title>${t.name} 測試清單</title>
@@ -1341,7 +1375,7 @@ td.dash{background:#f5f3ef;color:#c5bfb8}
         <div class="meta-item"><span class="meta-label">測試人員</span><span>${(t.members||[]).join('、')||'—'}</span></div>
         <div class="meta-item"><span class="meta-label">配合窗口</span><span>${(t.contacts||[]).join('、')||'—'}</span></div>
         <div class="meta-item"><span class="meta-label">狀態</span><span>${si.label}</span></div>
-        ${t.notes?`<div class="meta-item"><span class="meta-label">備註</span><span>${t.notes}</span></div>`:''}
+        ${(t.purpose||t.notes)?`<div class="meta-item"><span class="meta-label">測試目的</span><span>${t.purpose||t.notes}</span></div>`:''}
         <div class="meta-item"><span class="meta-label">驗證樣本</span><span>${sample.name}（${sample.type==='custom'?'自訂':'隨機'}）</span></div>
       </div>
     </div>
