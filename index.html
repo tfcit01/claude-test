@@ -1076,6 +1076,13 @@ function enforceCashLast(r){
 function enforceStoredValueMember(r){
   if(r.pay1==='購物金'||r.pay2==='購物金'||r.pay3==='購物金')r.member=true;
 }
+function enforceTaxIdExclusivity(r,changedField){
+  if(changedField==='taxId'&&r.taxId){
+    r.diplomat=false;r.carrier=false;
+  }else if((changedField==='diplomat'||changedField==='carrier')&&r[changedField]&&r.taxId){
+    r.taxId=false;
+  }
+}
 function generateRandomRows(){
   const rows=[];
   for(let i=1;i<=SAMPLE_ROW_COUNT;i++){
@@ -1087,9 +1094,9 @@ function generateRandomRows(){
     for(let k=0;k<payCount;k++)r[slots[k]]=shuffled[k];
     enforceCashLast(r);
     r.member=Math.random()<0.5;
-    r.diplomat=Math.random()<0.5;
-    r.carrier=Math.random()<0.5;
     r.taxId=Math.random()<0.5;
+    r.diplomat=r.taxId?false:Math.random()<0.5;
+    r.carrier=r.taxId?false:Math.random()<0.5;
     enforceStoredValueMember(r);
     rows.push(r);
   }
@@ -1142,6 +1149,15 @@ function updateSampleRowField(sampleId,rowIndex,field,value){
     if(p2)p2.value=row.pay2||'';
     if(p3)p3.value=row.pay3||'';
     if(memCb)memCb.checked=!!row.member;
+  }
+  if(field==='diplomat'||field==='carrier'||field==='taxId'){
+    enforceTaxIdExclusivity(row,field);
+    const dpCb=document.getElementById(`samp-${sampleId}-${rowIndex}-diplomat`);
+    const crCb=document.getElementById(`samp-${sampleId}-${rowIndex}-carrier`);
+    const txCb=document.getElementById(`samp-${sampleId}-${rowIndex}-taxId`);
+    if(dpCb)dpCb.checked=!!row.diplomat;
+    if(crCb)crCb.checked=!!row.carrier;
+    if(txCb)txCb.checked=!!row.taxId;
   }
   clearTimeout(sampleSaveTimers[sampleId]);
   sampleSaveTimers[sampleId]=setTimeout(()=>saveSampleRows(sampleId),700);
