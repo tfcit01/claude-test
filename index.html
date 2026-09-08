@@ -298,9 +298,9 @@ a{color:var(--sage);font-size:11px}
 
       <div class="task-form" id="add-task-form" style="display:none">
         <div class="edit-grid">
-          <div><div class="edit-label">任務名稱</div><input class="edit-input" id="f-name" placeholder="e.g. 台新PAY 結帳流程測試" /></div>
+          <div><div class="edit-label">任務名稱 <span style="color:var(--rust)">＊必填</span></div><input class="edit-input" id="f-name" placeholder="e.g. 台新PAY 結帳流程測試" /></div>
           <div><div class="edit-label">測試目的 <span style="color:var(--rust)">＊必填</span></div><input class="edit-input" id="f-purpose" placeholder="必填" /></div>
-          <div><div class="edit-label">支付功能</div><select class="edit-select" id="f-system"><option value="">— 選擇 —</option></select></div>
+          <div><div class="edit-label">支付功能 <span style="color:var(--rust)">＊必填</span></div><select class="edit-select" id="f-system"><option value="">— 選擇 —</option></select></div>
           <div><div class="edit-label">狀態</div>
             <div class="edit-status">
               <div id="fs-todo" class="es-opt es-todo" onclick="setFormStatus('todo')">未開始</div>
@@ -308,11 +308,11 @@ a{color:var(--sage);font-size:11px}
               <div id="fs-done" class="es-opt" onclick="setFormStatus('done')">已完成</div>
             </div>
           </div>
-          <div><div class="edit-label">開始日期</div><input class="edit-input" id="f-start" type="date" /></div>
-          <div><div class="edit-label">結束日期</div><input class="edit-input" id="f-end" type="date" /></div>
+          <div><div class="edit-label">開始日期 <span style="color:var(--rust)">＊必填</span></div><input class="edit-input" id="f-start" type="date" /></div>
+          <div><div class="edit-label">結束日期 <span style="color:var(--rust)">＊必填</span></div><input class="edit-input" id="f-end" type="date" /></div>
         </div>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
-          <div><div class="edit-label">測試人員</div><div class="edit-chips" id="members-wrap"></div></div>
+          <div><div class="edit-label">測試人員 <span style="color:var(--rust)">＊必填</span></div><div class="edit-chips" id="members-wrap"></div></div>
           <div><div class="edit-label">配合窗口</div><div class="edit-chips" id="contacts-wrap"></div></div>
         </div>
         <div class="btn-row">
@@ -647,12 +647,19 @@ function getNextTaskCode(){
 function addTask(){
   const name=document.getElementById('f-name').value.trim();
   const purpose=document.getElementById('f-purpose').value.trim();
+  const system=document.getElementById('f-system').value;
+  const start=document.getElementById('f-start').value;
+  const end=document.getElementById('f-end').value;
   if(!name){showToast('請輸入任務名稱','err');return;}
   if(!purpose){showToast('請填寫測試目的','err');return;}
+  if(!system){showToast('請選擇支付功能','err');return;}
+  if(!start){showToast('請選擇開始日期','err');return;}
+  if(!end){showToast('請選擇結束日期','err');return;}
+  if(!selectedMembers.length){showToast('請至少選擇一位測試人員','err');return;}
   getNextTaskCode().then(code=>{
     const data={
-      code,name,status:formStatus,system:document.getElementById('f-system').value,
-      start:document.getElementById('f-start').value,end:document.getElementById('f-end').value,
+      code,name,status:formStatus,system,
+      start,end,
       members:[...selectedMembers],contacts:[...selectedContacts],
       purpose,
       createdAt:firebase.firestore.FieldValue.serverTimestamp(),
@@ -1058,6 +1065,25 @@ function enforceTaxIdExclusivity(r,changedField){
     r.taxId=false;
   }
 }
+function biasRowsForTaskSystem(rows,system){
+  if(!system)return rows;
+  const cloned=JSON.parse(JSON.stringify(rows));
+  const target=Math.ceil(cloned.length*0.7);
+  let count=cloned.filter(r=>[r.pay1,r.pay2,r.pay3].includes(system)).length;
+  for(let i=0;i<cloned.length&&count<target;i++){
+    const r=cloned[i];
+    if(r.voided)continue;
+    if([r.pay1,r.pay2,r.pay3].includes(system))continue;
+    if(!r.pay1)r.pay1=system;
+    else if(!r.pay2)r.pay2=system;
+    else if(!r.pay3)r.pay3=system;
+    else r.pay1=system;
+    enforceCashLast(r);
+    enforceStoredValueMember(r);
+    count++;
+  }
+  return cloned;
+}
 function generateRandomRows(){
   const rows=[];
   for(let i=1;i<=SAMPLE_ROW_COUNT;i++){
@@ -1288,10 +1314,11 @@ function doExport(){
   if(!sampleId){showToast('請先選擇驗證樣本','err');return;}
   const sample=samples.find(s=>s.id===sampleId);
   if(!sample){showToast('找不到所選樣本，請重新選擇','err');return;}
+  const exportRows=sample.type==='random'?biasRowsForTaskSystem(sample.rows||[],t.system):(sample.rows||[]);
   const today=new Date().toLocaleDateString('zh-TW');
   const si=statusInfo(t.status);
   const ck=v=>v?'✓':'';
-  const rowsHtml=(sample.rows||[]).map(r=>`<tr>
+  const rowsHtml=exportRows.map(r=>`<tr>
       <td class="td-no">${r.seq}</td>
       <td class="td-amt">${r.amount??''}</td>
       <td>${r.pay1||''}</td><td>${r.pay2||''}</td><td>${r.pay3||''}</td>
@@ -1379,7 +1406,7 @@ td.dash{background:#f5f3ef;color:#c5bfb8}
       </div>
     </div>
   </div>
-  <div class="creds-strip">${buildSampleUsedCredsHtml(sample)}</div>
+  <div class="creds-strip">${buildSampleUsedCredsHtml({rows:exportRows})}</div>
   <div class="table-wrap"><table>
     <colgroup><col style="width:32px"><col style="width:50px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:38px"><col style="width:42px"><col style="width:38px"><col style="width:38px"><col style="width:38px"><col style="width:56px"><col style="width:192px"><col style="width:44px"><col class="col-result"></colgroup>
     <thead><tr><th>流水號</th><th>消費金額</th><th>支付1</th><th>支付2</th><th>支付3</th><th>會員</th><th>外交官</th><th>載具</th><th>統編</th><th>免稅</th><th>發票號碼</th><th class="th-item">備註說明</th><th>作廢</th><th>結果</th></tr></thead>
@@ -1402,7 +1429,7 @@ td.dash{background:#f5f3ef;color:#c5bfb8}
     sampleId:sample.id,
     sampleName:sample.name,
     sampleType:sample.type,
-    rows:sample.rows,
+    rows:exportRows,
     generatedAt:new Date().toISOString()
   }];
   db.collection('tasks').doc(t.id).update({sampleRuns:history,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
