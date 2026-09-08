@@ -37,7 +37,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .layout{display:grid;grid-template-columns:1fr}
 @media(min-width:960px){.layout{grid-template-columns:210px 1fr}}
 
-.sidebar{background:var(--sidebar);border-right:1px solid var(--border);min-height:calc(100vh - 53px);display:flex;flex-direction:column;justify-content:space-between}
+.sidebar{background:var(--sidebar);border-right:1px solid var(--border);min-height:calc(100vh - 53px);display:flex;flex-direction:column;justify-content:space-between;position:sticky;top:53px;height:calc(100vh - 53px);overflow-y:auto}
 .side-nav{display:flex;flex-direction:column;padding:14px 10px}
 .side-nav-item{display:flex;align-items:center;gap:9px;padding:11px 12px;border:none;border-radius:8px;background:transparent;color:var(--ink2);font-family:var(--sans);font-size:13.5px;font-weight:500;cursor:pointer;text-align:left;transition:.15s;margin-bottom:3px}
 .side-nav-item:hover{background:var(--panel);color:var(--ink)}
@@ -247,7 +247,7 @@ a{color:var(--sage);font-size:11px}
 .backup-list{max-height:280px;overflow-y:auto;margin-top:6px}
 
 @media(max-width:959px){
-  .sidebar{border-right:none;border-bottom:1px solid var(--border);min-height:unset}
+  .sidebar{border-right:none;border-bottom:1px solid var(--border);min-height:unset;position:static;height:auto}
   .edit-grid{grid-template-columns:1fr}.eg-full{grid-column:1}
   .cred-field-row{grid-template-columns:1fr 1fr;grid-template-rows:auto auto}
 }
@@ -287,7 +287,6 @@ a{color:var(--sage);font-size:11px}
   <div class="sidebar">
     <nav class="side-nav">
       <button class="side-nav-item active" id="nav-overview" onclick="showView('overview')"><span class="sni-ico">📋</span>任務總覽</button>
-      <button class="side-nav-item" id="nav-newtask" onclick="showView('newtask')"><span class="sni-ico">＋</span>新增測試任務</button>
       <button class="side-nav-item" id="nav-creds" onclick="showView('creds')"><span class="sni-ico">🔑</span>帳密資料</button>
       <button class="side-nav-item" id="nav-backup" onclick="showView('backup')"><span class="sni-ico">🗂</span>資料備份</button>
       <button class="side-nav-item" id="nav-sample" onclick="showView('sample')"><span class="sni-ico">🧪</span>驗證樣本</button>
@@ -301,20 +300,8 @@ a{color:var(--sage);font-size:11px}
 
   <div class="main">
 
-    <!-- ① 任務總覽 -->
+    <!-- ① 任務總覽（含新增任務表單） -->
     <div class="view-panel" id="view-overview">
-      <div id="gantt-wrap"></div>
-      <div class="sec-hd"><span class="sec-title">測試任務清單</span><div class="sec-line"></div></div>
-      <div class="tasks-list" id="tasks-list">
-        <div class="empty" id="empty-state">
-          <span class="e-icon">🗂</span>
-          尚無任務，請至「新增測試任務」建立第一筆測試任務
-        </div>
-      </div>
-    </div>
-
-    <!-- ② 新增測試任務 -->
-    <div class="view-panel" id="view-newtask" style="display:none">
       <div class="sec-hd"><span class="sec-title">新增測試任務</span><div class="sec-line"></div></div>
       <div class="task-form">
         <div class="form-sub">// NEW TASK</div>
@@ -363,6 +350,15 @@ a{color:var(--sage);font-size:11px}
         <div class="btn-row">
           <button class="btn btn-primary" onclick="addTask()">＋ 新增任務</button>
           <button class="btn btn-outline" onclick="clearForm()">清除</button>
+        </div>
+      </div>
+
+      <div id="gantt-wrap"></div>
+      <div class="sec-hd"><span class="sec-title">測試任務清單</span><div class="sec-line"></div></div>
+      <div class="tasks-list" id="tasks-list">
+        <div class="empty" id="empty-state">
+          <span class="e-icon">🗂</span>
+          尚無任務，請使用上方表單建立第一筆測試任務
         </div>
       </div>
     </div>
@@ -506,7 +502,7 @@ let MEMBERS=['Daniel','JiaJie','Sam','Kai','Luna'];
 let CONTACTS=['銷售組','OB票務','OB紀念品','商場帳務'];
 const OTHER_SYSTEMS=['中信刷卡','聯信刷卡','悠遊卡','現金','購物金','電子禮券','抵用券'];
 const CARD_COLORS=['#b05a3a','#4a6fa5','#5c7a6e','#8b7355','#6a5a8b','#3a8fa0','#a0673a','#7a8a3a'];
-const SAMPLE_PAY_OPTIONS=['中信刷卡','連信刷卡','購物金','101PAY','LINEPAY','街口支付','台新PAY','台灣PAY','電子商品禮券','電子現金禮券','抵用券','宜睿即享券','現金'];
+const SAMPLE_PAY_OPTIONS=['中信刷卡','聯信刷卡','購物金','101PAY','LINEPAY','街口支付','台新PAY','台灣PAY','電子商品禮券','電子現金禮券','抵用券','宜睿即享券','現金'];
 const SAMPLE_ROW_COUNT=12;
 
 function tick(){
@@ -606,7 +602,7 @@ function addTaskOption(kind){
 }
 
 /* ============ 導覽切換 ============ */
-const VIEWS=['overview','newtask','creds','backup','sample'];
+const VIEWS=['overview','creds','backup','sample'];
 function showView(v){
   VIEWS.forEach(name=>{
     const panel=document.getElementById('view-'+name);
