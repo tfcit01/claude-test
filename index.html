@@ -135,19 +135,6 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .f-input,.f-select{background:#faf9f6;border:1px solid var(--border2);border-radius:7px;padding:9px 12px;color:var(--ink);font-family:var(--sans);font-size:14px;outline:none;transition:.2s;width:100%}
 .f-input:focus,.f-select:focus{border-color:var(--sage);box-shadow:0 0 0 3px rgba(92,122,110,.12);background:var(--panel)}
 .f-select option{background:var(--panel)}
-.members-wrap,.contacts-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:3px}
-.member-chip,.contact-chip{padding:5px 13px;border-radius:20px;font-size:12px;border:1px solid var(--border2);background:var(--bg);cursor:pointer;transition:.18s;user-select:none;color:var(--ink2);display:flex;align-items:center;gap:5px}
-.member-chip:hover,.contact-chip:hover{border-color:var(--sage);color:var(--sage)}
-.member-chip.active{background:var(--sage-lt);border-color:var(--sage);color:var(--sage);font-weight:600}
-.contact-chip.active{background:var(--rust-lt);border-color:var(--rust);color:var(--rust);font-weight:600}
-.dot2{width:6px;height:6px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:.18s}
-.member-chip.active .dot2{background:var(--sage)}
-.status-sel{display:flex;gap:5px;height:38px}
-.ss-opt{flex:1;border:1px solid var(--border2);border-radius:7px;background:var(--bg);color:var(--muted);font-size:12px;cursor:pointer;text-align:center;transition:.15s;display:flex;align-items:center;justify-content:center}
-.ss-opt:hover{border-color:var(--sage-md);color:var(--ink)}
-.ss-opt.active-todo{border-color:var(--clay);color:var(--clay);background:var(--clay-lt);font-weight:600}
-.ss-opt.active-doing{border-color:var(--rust);color:var(--rust);background:var(--rust-lt);font-weight:600}
-.ss-opt.active-done{border-color:var(--sage);color:var(--sage);background:var(--sage-lt);font-weight:600}
 .btn-row{display:flex;gap:10px;margin-top:18px}
 .btn{padding:9px 22px;border:none;border-radius:7px;font-family:var(--sans);font-size:13px;font-weight:600;cursor:pointer;transition:.15s}
 .btn-primary{background:var(--sage);color:#fff;box-shadow:0 2px 8px rgba(92,122,110,.3)}
@@ -300,65 +287,44 @@ a{color:var(--sage);font-size:11px}
 
   <div class="main">
 
-    <!-- ① 任務總覽（含新增任務表單） -->
+    <!-- ① 任務總覽 -->
     <div class="view-panel" id="view-overview">
-      <div class="sec-hd"><span class="sec-title">新增測試任務</span><div class="sec-line"></div></div>
-      <div class="task-form">
-        <div class="form-sub">// NEW TASK</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
-          <div class="f-group">
-            <label class="f-label">任務名稱</label>
-            <input class="f-input" id="f-name" placeholder="e.g. 台新PAY 結帳流程測試" />
-          </div>
-          <div class="f-group">
-            <label class="f-label">測試目的 <span style="color:var(--rust)">＊必填</span></label>
-            <input class="f-input" id="f-purpose" placeholder="e.g. 驗證刷卡機更換後結帳流程是否正常" />
-          </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1.6fr 1.6fr;gap:10px;margin-bottom:12px">
-          <div class="f-group">
-            <label class="f-label">狀態</label>
-            <div class="status-sel" id="f-status-sel">
-              <div class="ss-opt active-todo" onclick="setFormStatus('todo')">未開始</div>
-              <div class="ss-opt" onclick="setFormStatus('doing')">進行中</div>
-              <div class="ss-opt" onclick="setFormStatus('done')">已完成</div>
+      <div id="gantt-wrap"></div>
+
+      <div class="sec-hd">
+        <span class="sec-title">測試任務清單</span><div class="sec-line"></div>
+        <button class="btn btn-primary" id="add-task-toggle-btn" onclick="toggleAddTaskForm()">＋ 新增任務</button>
+      </div>
+
+      <div class="task-form" id="add-task-form" style="display:none">
+        <div class="edit-grid">
+          <div><div class="edit-label">任務名稱</div><input class="edit-input" id="f-name" placeholder="e.g. 台新PAY 結帳流程測試" /></div>
+          <div><div class="edit-label">測試目的 <span style="color:var(--rust)">＊必填</span></div><input class="edit-input" id="f-purpose" placeholder="必填" /></div>
+          <div><div class="edit-label">支付功能</div><select class="edit-select" id="f-system"><option value="">— 選擇 —</option></select></div>
+          <div><div class="edit-label">狀態</div>
+            <div class="edit-status">
+              <div id="fs-todo" class="es-opt es-todo" onclick="setFormStatus('todo')">未開始</div>
+              <div id="fs-doing" class="es-opt" onclick="setFormStatus('doing')">進行中</div>
+              <div id="fs-done" class="es-opt" onclick="setFormStatus('done')">已完成</div>
             </div>
           </div>
-          <div class="f-group">
-            <label class="f-label">支付功能</label>
-            <select class="f-select" id="f-system" style="height:38px;padding:4px 10px">
-              <option value="">— 選擇 —</option>
-            </select>
-          </div>
-          <div class="f-group">
-            <label class="f-label">開始日期</label>
-            <input class="f-input" id="f-start" type="date" style="height:38px;padding:4px 10px" />
-          </div>
-          <div class="f-group">
-            <label class="f-label">結束日期</label>
-            <input class="f-input" id="f-end" type="date" style="height:38px;padding:4px 10px" />
-          </div>
-          <div class="f-group">
-            <label class="f-label">測試人員</label>
-            <div class="members-wrap" id="members-wrap" style="margin-top:2px;gap:4px"></div>
-          </div>
-          <div class="f-group">
-            <label class="f-label">配合窗口</label>
-            <div class="contacts-wrap" id="contacts-wrap" style="margin-top:2px;gap:4px"></div>
-          </div>
+          <div><div class="edit-label">開始日期</div><input class="edit-input" id="f-start" type="date" /></div>
+          <div><div class="edit-label">結束日期</div><input class="edit-input" id="f-end" type="date" /></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+          <div><div class="edit-label">測試人員</div><div class="edit-chips" id="members-wrap"></div></div>
+          <div><div class="edit-label">配合窗口</div><div class="edit-chips" id="contacts-wrap"></div></div>
         </div>
         <div class="btn-row">
-          <button class="btn btn-primary" onclick="addTask()">＋ 新增任務</button>
-          <button class="btn btn-outline" onclick="clearForm()">清除</button>
+          <button class="btn btn-primary" onclick="addTask()">＋ 確認新增</button>
+          <button class="btn btn-outline" onclick="cancelAddTask()">取消</button>
         </div>
       </div>
 
-      <div id="gantt-wrap"></div>
-      <div class="sec-hd"><span class="sec-title">測試任務清單</span><div class="sec-line"></div></div>
       <div class="tasks-list" id="tasks-list">
         <div class="empty" id="empty-state">
           <span class="e-icon">🗂</span>
-          尚無任務，請使用上方表單建立第一筆測試任務
+          尚無任務，請點選上方「＋ 新增任務」建立第一筆測試任務
         </div>
       </div>
     </div>
@@ -615,31 +581,44 @@ function showView(v){
 /* ============ 表單狀態 ============ */
 function setFormStatus(s){
   formStatus=s;
-  const opts=document.querySelectorAll('#f-status-sel .ss-opt');
-  opts.forEach(o=>o.className='ss-opt');
-  if(s==='todo')opts[0].className='ss-opt active-todo';
-  if(s==='doing')opts[1].className='ss-opt active-doing';
-  if(s==='done')opts[2].className='ss-opt active-done';
+  const map={todo:'fs-todo',doing:'fs-doing',done:'fs-done'};
+  ['todo','doing','done'].forEach(k=>{
+    const el=document.getElementById(map[k]);
+    if(el)el.className='es-opt'+(k===s?' es-'+k:'');
+  });
 }
-function toggleMember(el,name){el.classList.toggle('active');if(el.classList.contains('active'))selectedMembers.push(name);else selectedMembers=selectedMembers.filter(m=>m!==name);}
-function toggleContact(el,name){el.classList.toggle('active');if(el.classList.contains('active'))selectedContacts.push(name);else selectedContacts=selectedContacts.filter(c=>c!==name);}
+function toggleMember(el,name){el.classList.toggle('active-m');if(el.classList.contains('active-m'))selectedMembers.push(name);else selectedMembers=selectedMembers.filter(m=>m!==name);}
+function toggleContact(el,name){el.classList.toggle('active-c');if(el.classList.contains('active-c'))selectedContacts.push(name);else selectedContacts=selectedContacts.filter(c=>c!==name);}
 function renderMemberChips(){
   const wrap=document.getElementById('members-wrap');
   if(!wrap)return;
-  wrap.innerHTML=MEMBERS.map(m=>`<div class="member-chip${selectedMembers.includes(m)?' active':''}" onclick="toggleMember(this,'${m}')" style="padding:3px 10px;font-size:12px"><div class="dot2"></div>${m}</div>`).join('')
-    +`<div class="member-chip" onclick="addTaskOption('members')" style="padding:3px 10px;font-size:12px;border-style:dashed;color:var(--muted)">＋新增</div>`;
+  wrap.innerHTML=MEMBERS.map(m=>`<span class="edit-chip${selectedMembers.includes(m)?' active-m':''}" onclick="toggleMember(this,'${m}')">${m}</span>`).join('')
+    +`<span class="edit-chip" style="border-style:dashed;color:var(--muted)" onclick="addTaskOption('members')">＋新增</span>`;
 }
 function renderContactChips(){
   const wrap=document.getElementById('contacts-wrap');
   if(!wrap)return;
-  wrap.innerHTML=CONTACTS.map(c=>`<div class="contact-chip${selectedContacts.includes(c)?' active':''}" onclick="toggleContact(this,'${c}')" style="padding:3px 10px;font-size:12px">${c}</div>`).join('')
-    +`<div class="contact-chip" onclick="addTaskOption('contacts')" style="padding:3px 10px;font-size:12px;border-style:dashed;color:var(--muted)">＋新增</div>`;
+  wrap.innerHTML=CONTACTS.map(c=>`<span class="edit-chip${selectedContacts.includes(c)?' active-c':''}" onclick="toggleContact(this,'${c}')">${c}</span>`).join('')
+    +`<span class="edit-chip" style="border-style:dashed;color:var(--muted)" onclick="addTaskOption('contacts')">＋新增</span>`;
 }
 function clearForm(){
   ['f-name','f-purpose','f-system','f-start','f-end'].forEach(id=>{document.getElementById(id).value='';});
   selectedMembers=[];selectedContacts=[];
   renderMemberChips();renderContactChips();
   setFormStatus('todo');
+}
+function toggleAddTaskForm(){
+  const form=document.getElementById('add-task-form');
+  const btn=document.getElementById('add-task-toggle-btn');
+  const opening=form.style.display==='none';
+  form.style.display=opening?'block':'none';
+  btn.textContent=opening?'✕ 取消新增':'＋ 新增任務';
+  if(opening)renderMemberChips(),renderContactChips();
+}
+function cancelAddTask(){
+  clearForm();
+  document.getElementById('add-task-form').style.display='none';
+  document.getElementById('add-task-toggle-btn').textContent='＋ 新增任務';
 }
 
 function getAllSystemOptions(){
@@ -680,7 +659,7 @@ function addTask(){
       updatedAt:firebase.firestore.FieldValue.serverTimestamp()
     };
     return db.collection('tasks').add(data);
-  }).then(()=>{clearForm();showToast('✓ 任務已新增');scheduleBackup();})
+  }).then(()=>{cancelAddTask();showToast('✓ 任務已新增');scheduleBackup();})
     .catch(e=>showToast('新增失敗：'+e.message,'err'));
 }
 
@@ -840,7 +819,7 @@ function render(){
   const list=document.getElementById('tasks-list');
   const EMPTY_HTML=`<div class="empty" id="empty-state">
     <span class="e-icon">🗂</span>
-    尚無任務，請至「新增測試任務」建立第一筆測試任務
+    尚無任務，請點選上方「＋ 新增任務」建立第一筆測試任務
   </div>`;
 
   renderGantt();
