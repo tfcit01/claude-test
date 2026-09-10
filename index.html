@@ -123,6 +123,10 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .sample-table select{width:100%;min-width:100px;border:1px solid var(--border2);border-radius:5px;padding:5px 4px;font-size:11.5px;background:var(--panel)}
 .sample-table input[type="checkbox"]{width:16px;height:16px;cursor:pointer}
 .sample-toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.activity-preview-table{border-collapse:collapse;width:100%;font-size:12px;border:1px solid var(--border);border-radius:6px;overflow:hidden}
+.activity-preview-table th{background:var(--sage-lt);color:var(--sage);font-weight:600;padding:6px 10px;text-align:left;border-bottom:1px solid var(--border)}
+.activity-preview-table td{padding:5px 10px;border-bottom:1px solid #ede9e3;color:var(--ink2)}
+.activity-preview-table tr:last-child td{border-bottom:none}
 
 .sec-hd{display:flex;align-items:center;margin-bottom:14px;gap:12px}
 .sec-title{font-family:var(--serif);font-size:16px;font-weight:600;color:var(--ink);white-space:nowrap}
@@ -1179,9 +1183,28 @@ function saveSampleRows(sampleId){
     .then(()=>scheduleBackup())
     .catch(e=>showToast('儲存失敗：'+e.message,'err'));
 }
+function parseActivityTable(text){
+  if(!text||!text.trim())return null;
+  const lines=text.replace(/\r/g,'').split('\n').filter(l=>l.length>0);
+  const rows=lines.map(l=>l.split('\t'));
+  const maxCols=Math.max(...rows.map(r=>r.length));
+  if(maxCols<=1)return null;
+  return rows.map(r=>{const row=r.slice();while(row.length<maxCols)row.push('');return row;});
+}
+function renderActivityPreview(sampleId,value){
+  const el=document.getElementById(`samp-${sampleId}-activityPreview`);
+  if(!el)return;
+  const table=parseActivityTable(value);
+  if(!table){el.style.display='none';el.innerHTML='';return;}
+  el.style.display='block';
+  el.innerHTML='<div style="font-size:11px;color:var(--sage);margin-bottom:4px">✓ 偵測到表格格式，將以表格呈現</div><table class="activity-preview-table">'
+    +table.map((row,ri)=>`<tr>${row.map(cell=>`<${ri===0?'th':'td'}>${cell}</${ri===0?'th':'td'}>`).join('')}</tr>`).join('')
+    +'</table>';
+}
 function updateSampleActivityNote(sampleId,value){
   const s=samples.find(s=>s.id===sampleId);if(!s)return;
   s.activityNote=value;
+  renderActivityPreview(sampleId,value);
   clearTimeout(sampleSaveTimers[sampleId+'-note']);
   sampleSaveTimers[sampleId+'-note']=setTimeout(()=>{
     db.collection('samples').doc(sampleId).update({activityNote:value,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
@@ -1285,12 +1308,14 @@ function renderSamples(){
       <div class="sample-detail">
         <div class="f-group" style="margin-bottom:14px">
           <label class="f-label">活動說明</label>
-          <textarea class="edit-input" id="samp-${s.id}-activityNote" rows="3" placeholder="選填，可輸入或貼上本次驗證樣本對應的活動內容說明" style="resize:vertical;font-family:var(--sans);line-height:1.6" oninput="updateSampleActivityNote('${s.id}',this.value)">${s.activityNote||''}</textarea>
+          <textarea class="edit-input" id="samp-${s.id}-activityNote" rows="3" placeholder="選填，可輸入或貼上本次驗證樣本對應的活動內容說明（貼上表格會自動偵測並轉為表格呈現）" style="resize:vertical;font-family:var(--sans);line-height:1.6" oninput="updateSampleActivityNote('${s.id}',this.value)">${s.activityNote||''}</textarea>
+          <div id="samp-${s.id}-activityPreview" style="display:none;margin-top:8px"></div>
         </div>
         ${buildSampleTableHtml(s)}
       </div>
     </div>`;
   }).join('');
+  samples.forEach(s=>{if(s.activityNote)renderActivityPreview(s.id,s.activityNote);});
 }
 
 /* ============ 測試清單匯出 ============ */
@@ -1345,6 +1370,17 @@ function doExport(){
   const today=new Date().toLocaleDateString('zh-TW');
   const si=statusInfo(t.status);
   const ck=v=>v?'✓':'';
+  let activityBlockHtml='';
+  if(sample.activityNote&&sample.activityNote.trim()){
+    const activityTable=parseActivityTable(sample.activityNote);
+    const bodyHtml=activityTable
+      ?`<table style="width:100%;border-collapse:collapse;font-size:10px">${activityTable.map((row,ri)=>`<tr style="${ri===0?'background:#faf9f6':''}">${row.map(cell=>`<td style="padding:4px 8px;border-bottom:1px solid #e2ddd6;text-align:left;${ri===0?'font-weight:600;color:#7a7068':'color:#5a5450'}">${cell}</td>`).join('')}</tr>`).join('')}</table>`
+      :`<div style="padding:10px 12px;font-size:11.5px;line-height:1.8;color:#5a5450;white-space:pre-wrap">${sample.activityNote}</div>`;
+    activityBlockHtml=`<div style="border:1px solid #e2ddd6;border-radius:8px;margin-bottom:13px;overflow:hidden">
+    <div style="background:#faf5e8;color:#8b7355;font-size:10px;font-weight:700;letter-spacing:.06em;padding:5px 11px;border-bottom:1px solid #e2ddd6">活動說明</div>
+    ${bodyHtml}
+  </div>`;
+  }
   const rowsHtml=exportRows.map(r=>`<tr>
       <td class="td-no">${r.seq}</td>
       <td class="td-amt">${r.amount??''}</td>
@@ -1438,10 +1474,7 @@ td.dash{background:#f5f3ef;color:#c5bfb8}
       </div>
     </div>
   </div>
-  ${sample.activityNote&&sample.activityNote.trim()?`<div style="border:1px solid #e2ddd6;border-radius:8px;margin-bottom:13px;overflow:hidden">
-    <div style="background:#faf5e8;color:#8b7355;font-size:10px;font-weight:700;letter-spacing:.06em;padding:5px 11px;border-bottom:1px solid #e2ddd6">活動說明</div>
-    <div style="padding:10px 12px;font-size:11.5px;line-height:1.8;color:#5a5450;white-space:pre-wrap">${sample.activityNote}</div>
-  </div>`:''}
+  ${activityBlockHtml}
   <div class="creds-strip">${buildSampleUsedCredsHtml({rows:exportRows})}</div>
   <div class="table-wrap"><table>
     <colgroup><col style="width:32px"><col style="width:50px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:38px"><col style="width:42px"><col style="width:38px"><col style="width:38px"><col style="width:38px"><col style="width:56px"><col style="width:192px"><col style="width:44px"><col class="col-result"></colgroup>
