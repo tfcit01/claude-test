@@ -474,6 +474,8 @@ const OTHER_SYSTEMS=['中信刷卡','聯信刷卡','悠遊卡','現金','購物�
 const CARD_COLORS=['#b05a3a','#4a6fa5','#5c7a6e','#8b7355','#6a5a8b','#3a8fa0','#a0673a','#7a8a3a'];
 const SAMPLE_PAY_OPTIONS=['中信刷卡','聯信刷卡','購物金','101PAY','LINEPAY','街口支付','台新PAY','台灣PAY','電子商品禮券','電子現金禮券','抵用券','宜睿即享券','現金'];
 const SAMPLE_ROW_COUNT=12;
+const CARD_TYPE_OPTIONS=['一般','紅利','分期'];
+const CARD_TYPE_ELIGIBLE=['中信刷卡','聯信刷卡'];
 
 function tick(){
   const n=new Date();
@@ -1040,7 +1042,7 @@ function restoreBackup(id){
 
 /* ============ 驗證樣本 ============ */
 function blankRow(seq){
-  return{seq,amount:null,pay1:null,pay2:null,pay3:null,member:false,diplomat:false,carrier:false,taxId:false,taxFree:false,invoiceNo:null,notes:null,voided:false,voidRefSeq:null};
+  return{seq,amount:null,pay1:null,pay2:null,pay3:null,pay1Type:null,pay2Type:null,pay3Type:null,member:false,diplomat:false,carrier:false,taxId:false,taxFree:false,invoiceNo:null,notes:null,voided:false,voidRefSeq:null};
 }
 function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
 function randPick(arr){return arr[Math.floor(Math.random()*arr.length)];}
@@ -1050,13 +1052,16 @@ function generateCustomRows(){
   return rows;
 }
 function enforceCashLast(r){
-  const vals=[r.pay1,r.pay2,r.pay3].filter(v=>v);
-  if(vals.includes('現金')){
-    const others=vals.filter(v=>v!=='現金');
-    const ordered=[...others,'現金'];
-    r.pay1=ordered[0]||null;
-    r.pay2=ordered[1]||null;
-    r.pay3=ordered[2]||null;
+  const pairs=[['pay1','pay1Type'],['pay2','pay2Type'],['pay3','pay3Type']];
+  const filled=pairs.filter(([f])=>r[f]).map(([f,tf])=>({val:r[f],type:r[tf]}));
+  if(filled.some(p=>p.val==='現金')){
+    const cash=filled.filter(p=>p.val==='現金');
+    const others=filled.filter(p=>p.val!=='現金');
+    const ordered=[...others,...cash];
+    pairs.forEach(([f,tf],idx)=>{
+      r[f]=ordered[idx]?ordered[idx].val:null;
+      r[tf]=ordered[idx]?ordered[idx].type:null;
+    });
   }
 }
 function enforceStoredValueMember(r){
@@ -1098,6 +1103,7 @@ function generateRandomRows(){
     const slots=['pay1','pay2','pay3'];
     for(let k=0;k<payCount;k++)r[slots[k]]=shuffled[k];
     enforceCashLast(r);
+    slots.forEach(f=>{if(CARD_TYPE_ELIGIBLE.includes(r[f]))r[f+'Type']=randPick(CARD_TYPE_OPTIONS);});
     r.member=Math.random()<0.5;
     r.taxId=Math.random()<0.5;
     r.diplomat=r.taxId?false:Math.random()<0.5;
@@ -1164,6 +1170,16 @@ function updateSampleRowField(sampleId,rowIndex,field,value){
     if(p2)p2.value=row.pay2||'';
     if(p3)p3.value=row.pay3||'';
     if(memCb)memCb.checked=!!row.member;
+    ['pay1','pay2','pay3'].forEach(f=>{
+      const tf=f+'Type';
+      const typeEl=document.getElementById(`samp-${sampleId}-${rowIndex}-${tf}`);
+      const eligible=CARD_TYPE_ELIGIBLE.includes(row[f]);
+      if(!eligible)row[tf]=null;
+      if(typeEl){
+        typeEl.style.display=eligible?'inline-block':'none';
+        typeEl.value=row[tf]||'';
+      }
+    });
   }
   if(field==='diplomat'||field==='carrier'||field==='taxId'){
     enforceTaxIdExclusivity(row,field);
@@ -1221,9 +1237,24 @@ function buildSampleTableHtml(s){
     return`<tr>
     <td class="st-seq">${r.seq}</td>
     <td><input type="number" class="st-amount" id="samp-${s.id}-${i}-amount" value="${r.amount??''}" oninput="updateSampleRowField('${s.id}',${i},'amount',this.value?Number(this.value):null)"></td>
-    <td><select id="samp-${s.id}-${i}-pay1" onchange="updateSampleRowField('${s.id}',${i},'pay1',this.value||null)">${payOptionsHtml(r.pay1)}</select></td>
-    <td><select id="samp-${s.id}-${i}-pay2" onchange="updateSampleRowField('${s.id}',${i},'pay2',this.value||null)">${payOptionsHtml(r.pay2)}</select></td>
-    <td><select id="samp-${s.id}-${i}-pay3" onchange="updateSampleRowField('${s.id}',${i},'pay3',this.value||null)">${payOptionsHtml(r.pay3)}</select></td>
+    <td>
+      <select id="samp-${s.id}-${i}-pay1" onchange="updateSampleRowField('${s.id}',${i},'pay1',this.value||null)">${payOptionsHtml(r.pay1)}</select>
+      <select id="samp-${s.id}-${i}-pay1Type" style="display:${CARD_TYPE_ELIGIBLE.includes(r.pay1)?'inline-block':'none'};margin-top:3px" onchange="updateSampleRowField('${s.id}',${i},'pay1Type',this.value||null)">
+        <option value="">選類型</option>${CARD_TYPE_OPTIONS.map(o=>`<option value="${o}"${r.pay1Type===o?' selected':''}>${o}</option>`).join('')}
+      </select>
+    </td>
+    <td>
+      <select id="samp-${s.id}-${i}-pay2" onchange="updateSampleRowField('${s.id}',${i},'pay2',this.value||null)">${payOptionsHtml(r.pay2)}</select>
+      <select id="samp-${s.id}-${i}-pay2Type" style="display:${CARD_TYPE_ELIGIBLE.includes(r.pay2)?'inline-block':'none'};margin-top:3px" onchange="updateSampleRowField('${s.id}',${i},'pay2Type',this.value||null)">
+        <option value="">選類型</option>${CARD_TYPE_OPTIONS.map(o=>`<option value="${o}"${r.pay2Type===o?' selected':''}>${o}</option>`).join('')}
+      </select>
+    </td>
+    <td>
+      <select id="samp-${s.id}-${i}-pay3" onchange="updateSampleRowField('${s.id}',${i},'pay3',this.value||null)">${payOptionsHtml(r.pay3)}</select>
+      <select id="samp-${s.id}-${i}-pay3Type" style="display:${CARD_TYPE_ELIGIBLE.includes(r.pay3)?'inline-block':'none'};margin-top:3px" onchange="updateSampleRowField('${s.id}',${i},'pay3Type',this.value||null)">
+        <option value="">選類型</option>${CARD_TYPE_OPTIONS.map(o=>`<option value="${o}"${r.pay3Type===o?' selected':''}>${o}</option>`).join('')}
+      </select>
+    </td>
     <td><input type="checkbox" id="samp-${s.id}-${i}-member" ${r.member?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'member',this.checked)"></td>
     <td><input type="checkbox" id="samp-${s.id}-${i}-diplomat" ${r.diplomat?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'diplomat',this.checked)"></td>
     <td><input type="checkbox" id="samp-${s.id}-${i}-carrier" ${r.carrier?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'carrier',this.checked)"></td>
@@ -1384,7 +1415,7 @@ function doExport(){
   const rowsHtml=exportRows.map(r=>`<tr>
       <td class="td-no">${r.seq}</td>
       <td class="td-amt">${r.amount??''}</td>
-      <td>${r.pay1||''}</td><td>${r.pay2||''}</td><td>${r.pay3||''}</td>
+      <td>${r.pay1?r.pay1+(r.pay1Type?`（${r.pay1Type}）`:''):''}</td><td>${r.pay2?r.pay2+(r.pay2Type?`（${r.pay2Type}）`:''):''}</td><td>${r.pay3?r.pay3+(r.pay3Type?`（${r.pay3Type}）`:''):''}</td>
       <td>${ck(r.member)}</td><td>${ck(r.diplomat)}</td><td>${ck(r.carrier)}</td><td>${ck(r.taxId)}</td><td>${ck(r.taxFree)}</td>
       <td>${r.invoiceNo||''}</td>
       <td class="td-item">${r.notes||''}</td>
@@ -1477,7 +1508,7 @@ td.dash{background:#f5f3ef;color:#c5bfb8}
   ${activityBlockHtml}
   <div class="creds-strip">${buildSampleUsedCredsHtml({rows:exportRows})}</div>
   <div class="table-wrap"><table>
-    <colgroup><col style="width:32px"><col style="width:50px"><col style="width:78px"><col style="width:78px"><col style="width:78px"><col style="width:38px"><col style="width:42px"><col style="width:38px"><col style="width:38px"><col style="width:38px"><col style="width:56px"><col style="width:192px"><col style="width:44px"><col class="col-result"></colgroup>
+    <colgroup><col style="width:32px"><col style="width:50px"><col style="width:92px"><col style="width:92px"><col style="width:92px"><col style="width:38px"><col style="width:42px"><col style="width:38px"><col style="width:38px"><col style="width:38px"><col style="width:56px"><col style="width:150px"><col style="width:44px"><col class="col-result"></colgroup>
     <thead><tr><th>流水號</th><th>消費金額</th><th>支付1</th><th>支付2</th><th>支付3</th><th>會員</th><th>外交官</th><th>載具</th><th>統編</th><th>免稅</th><th>發票號碼</th><th class="th-item">備註說明</th><th>作廢</th><th>結果</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
   </table></div>
