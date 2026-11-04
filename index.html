@@ -1096,24 +1096,25 @@ function biasRowsForTaskSystem(rows,system){
   }
   return cloned;
 }
+function generateRandomRow(seq){
+  const r=blankRow(seq);
+  r.amount=randInt(5,1000)*10;
+  const payCount=randInt(1,3);
+  const shuffled=[...SAMPLE_PAY_OPTIONS].sort(()=>Math.random()-0.5);
+  const slots=['pay1','pay2','pay3'];
+  for(let k=0;k<payCount;k++)r[slots[k]]=shuffled[k];
+  enforceCashLast(r);
+  slots.forEach(f=>{if(CARD_TYPE_ELIGIBLE.includes(r[f]))r[f+'Type']=randPick(CARD_TYPE_OPTIONS);});
+  r.member=Math.random()<0.5;
+  r.taxId=Math.random()<0.5;
+  r.diplomat=r.taxId?false:Math.random()<0.5;
+  r.carrier=r.taxId?false:Math.random()<0.5;
+  enforceStoredValueMember(r);
+  return r;
+}
 function generateRandomRows(){
   const rows=[];
-  for(let i=1;i<=SAMPLE_ROW_COUNT;i++){
-    const r=blankRow(String(i).padStart(3,'0'));
-    r.amount=randInt(5,1000)*10;
-    const payCount=randInt(1,3);
-    const shuffled=[...SAMPLE_PAY_OPTIONS].sort(()=>Math.random()-0.5);
-    const slots=['pay1','pay2','pay3'];
-    for(let k=0;k<payCount;k++)r[slots[k]]=shuffled[k];
-    enforceCashLast(r);
-    slots.forEach(f=>{if(CARD_TYPE_ELIGIBLE.includes(r[f]))r[f+'Type']=randPick(CARD_TYPE_OPTIONS);});
-    r.member=Math.random()<0.5;
-    r.taxId=Math.random()<0.5;
-    r.diplomat=r.taxId?false:Math.random()<0.5;
-    r.carrier=r.taxId?false:Math.random()<0.5;
-    enforceStoredValueMember(r);
-    rows.push(r);
-  }
+  for(let i=1;i<=SAMPLE_ROW_COUNT;i++)rows.push(generateRandomRow(String(i).padStart(3,'0')));
   return rows;
 }
 function openNewSampleModal(){
@@ -1282,7 +1283,16 @@ function buildSampleTableHtml(s){
   return`<div class="sample-table-wrap"><table class="sample-table">
     <thead><tr><th>流水號</th><th>消費金額</th><th>支付1</th><th>支付2</th><th>支付3</th><th>會員</th><th>外交官</th><th>載具</th><th>統編</th><th>免稅</th><th>發票號碼</th><th>備註說明</th><th>作廢</th><th>刪除</th></tr></thead>
     <tbody>${rowsHtml}</tbody>
-  </table></div>`;
+  </table></div>
+  <div style="margin-top:10px"><button class="btn btn-outline" onclick="addSampleRow('${s.id}')">＋ 新增一筆交易</button></div>`;
+}
+function addSampleRow(sampleId){
+  const s=samples.find(s=>s.id===sampleId);if(!s)return;
+  const maxSeq=s.rows.reduce((m,r)=>Math.max(m,parseInt(r.seq,10)||0),0);
+  const seq=String(maxSeq+1).padStart(3,'0');
+  s.rows.push(s.type==='random'?generateRandomRow(seq):blankRow(seq));
+  saveSampleRows(sampleId);
+  renderSamples();
 }
 function deleteSampleRow(sampleId,rowIndex){
   const s=samples.find(s=>s.id===sampleId);if(!s)return;
