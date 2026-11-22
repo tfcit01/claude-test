@@ -105,6 +105,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .sample-badge{font-family:var(--mono);font-size:10px;letter-spacing:.06em;padding:2px 9px;border-radius:20px;font-weight:600}
 .sample-badge.custom{background:var(--clay-lt);color:var(--clay)}
 .sample-badge.random{background:var(--sage-lt);color:var(--sage)}
+.sample-badge.standard{background:var(--rust-lt);color:var(--rust)}
 .sample-meta{font-size:12px;color:var(--muted);margin-top:2px}
 .sample-actions{display:flex;gap:6px;flex-shrink:0}
 .sample-detail{display:none;border-top:1px solid var(--border);padding:16px;background:#faf9f6}
@@ -283,7 +284,7 @@ a{color:var(--sage);font-size:11px}
       <button class="side-nav-item active" id="nav-overview" onclick="showView('overview')"><span class="sni-ico">📋</span>任務總覽</button>
       <button class="side-nav-item" id="nav-creds" onclick="showView('creds')"><span class="sni-ico">🔑</span>帳密資料</button>
       <button class="side-nav-item" id="nav-backup" onclick="showView('backup')"><span class="sni-ico">🗂</span>資料備份</button>
-      <button class="side-nav-item" id="nav-sample" onclick="showView('sample')"><span class="sni-ico">🧪</span>驗證樣本</button>
+      <button class="side-nav-item" id="nav-sample" onclick="showView('sample')"><span class="sni-ico">🧪</span>樣本</button>
     </nav>
     <div class="side-info">
       <div>ENV：TEST / UAT</div>
@@ -307,7 +308,7 @@ a{color:var(--sage);font-size:11px}
         <div class="edit-grid">
           <div><div class="edit-label">任務名稱 <span style="color:var(--rust)">＊必填</span></div><input class="edit-input" id="f-name" placeholder="e.g. 台新PAY 結帳流程測試" /></div>
           <div><div class="edit-label">測試目的 <span style="color:var(--rust)">＊必填</span></div><input class="edit-input" id="f-purpose" placeholder="必填" /></div>
-          <div><div class="edit-label">支付功能 <span style="color:var(--rust)">＊必填</span></div><select class="edit-select" id="f-system"><option value="">— 選擇 —</option></select></div>
+          <div><div class="edit-label">支付功能</div><select class="edit-select" id="f-system"><option value="">— 選擇 —</option></select></div>
           <div><div class="edit-label">狀態</div>
             <div class="edit-status">
               <div id="fs-todo" class="es-opt es-todo" onclick="setFormStatus('todo')">未開始</div>
@@ -352,9 +353,9 @@ a{color:var(--sage);font-size:11px}
       <div class="backup-list" id="backup-list" style="max-height:none"></div>
     </div>
 
-    <!-- ⑤ 驗證樣本 -->
+    <!-- ⑤ 樣本 -->
     <div class="view-panel" id="view-sample" style="display:none">
-      <div class="sec-hd"><span class="sec-title">驗證樣本</span><div class="sec-line"></div><button class="btn btn-outline" onclick="openNewSampleModal()">＋ 新增樣本</button></div>
+      <div class="sec-hd"><span class="sec-title">樣本</span><div class="sec-line"></div><button class="btn btn-outline" onclick="openNewSampleModal()">＋ 新增樣本</button></div>
       <div id="samples-wrap"><div style="text-align:center;color:var(--muted);font-size:12px;padding:20px">載入中…</div></div>
     </div>
 
@@ -362,25 +363,86 @@ a{color:var(--sage);font-size:11px}
 </div>
 
 <!-- 新增樣本 modal -->
+<div class="modal-bg" id="sample-copy-modal-bg" onclick="if(event.target===this)closeCopySampleModal()">
+  <div class="modal">
+    <div class="modal-title">複製標準版樣本</div>
+    <div style="font-size:13px;color:var(--ink2);margin-bottom:14px">來源：<b id="copy-src-name"></b>（將複製交易列、活動說明與帳密列印設定）</div>
+    <div class="f-label" style="margin-bottom:6px">要產生的類型 <span style="color:var(--rust)">＊至少選一個</span></div>
+    <div id="copy-types" style="display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:14px">
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" value="商場"> 商場</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" value="MPOS"> MPOS</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" value="OB紀念品"> OB紀念品</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:13px;cursor:pointer"><input type="checkbox" value="OB票務"> OB票務</label>
+    </div>
+    <div class="f-group" style="margin-bottom:12px">
+      <label class="f-label">日期 <span style="color:var(--rust)">＊必填</span></label>
+      <input class="f-input" id="copy-date" type="date" />
+    </div>
+    <div class="f-group" style="margin-bottom:12px">
+      <label class="f-label">測試人員 <span style="color:var(--rust)">＊必填</span></label>
+      <select class="f-select" id="copy-tester"></select>
+    </div>
+    <div style="font-size:12px;color:var(--muted)">將建立：<span id="copy-name-preview">（請先勾選類型）</span></div>
+    <div class="modal-actions">
+      <button class="btn btn-outline" onclick="closeCopySampleModal()">取消</button>
+      <button class="btn btn-primary" onclick="copyStandardSample()">建立複本</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="sample-new-modal-bg" onclick="if(event.target===this)closeNewSampleModal()">
   <div class="modal">
-    <div class="modal-title">新增驗證樣本</div>
-    <div class="f-group" style="margin-bottom:16px">
-      <label class="f-label">樣本名稱</label>
-      <input class="f-input" id="sample-new-name" placeholder="例如：街口支付 9月驗證" />
+    <div class="modal-title">新增樣本</div>
+    <div id="sample-new-basic">
+      <div class="f-group" style="margin-bottom:16px">
+        <label class="f-label">樣本名稱</label>
+        <input class="f-input" id="sample-new-name" placeholder="例如：街口支付 9月驗證" />
+      </div>
+      <div class="f-label" style="margin-bottom:8px">選擇產生方式</div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <button class="btn btn-outline" style="text-align:left;padding:14px 16px" onclick="createSample('custom')">
+          <div style="font-weight:600;margin-bottom:3px">📝 自訂樣本</div>
+          <div style="font-size:12px;color:var(--muted);font-weight:400">產生 12 列交易，僅流水號自動編號，其餘欄位空白供您自行填寫</div>
+        </button>
+        <button class="btn btn-outline" style="text-align:left;padding:14px 16px" onclick="createSample('random')">
+          <div style="font-weight:600;margin-bottom:3px">🎲 隨機樣本</div>
+          <div style="font-size:12px;color:var(--muted);font-weight:400">產生 12 列交易，金額、支付方式、會員等欄位隨機填入</div>
+        </button>
+        <button class="btn btn-outline" style="text-align:left;padding:14px 16px" onclick="showStdForm()">
+          <div style="font-weight:600;margin-bottom:3px">📋 標準版</div>
+          <div style="font-size:12px;color:var(--muted);font-weight:400">填寫日期、測試人員、類型，樣本名稱自動命名為「類型_標準版」</div>
+        </button>
+      </div>
     </div>
-    <div class="f-label" style="margin-bottom:8px">選擇產生方式</div>
-    <div style="display:flex;flex-direction:column;gap:10px">
-      <button class="btn btn-outline" style="text-align:left;padding:14px 16px" onclick="createSample('custom')">
-        <div style="font-weight:600;margin-bottom:3px">📝 自訂樣本</div>
-        <div style="font-size:12px;color:var(--muted);font-weight:400">產生 12 列交易，僅流水號自動編號，其餘欄位空白供您自行填寫</div>
-      </button>
-      <button class="btn btn-outline" style="text-align:left;padding:14px 16px" onclick="createSample('random')">
-        <div style="font-weight:600;margin-bottom:3px">🎲 隨機樣本</div>
-        <div style="font-size:12px;color:var(--muted);font-weight:400">產生 12 列交易，金額、支付方式、會員等欄位隨機填入</div>
-      </button>
+    <div id="sample-new-std" style="display:none">
+      <div class="f-group" style="margin-bottom:12px">
+        <label class="f-label">日期 <span style="color:var(--rust)">＊必填</span></label>
+        <input class="f-input" id="std-date" type="date" />
+      </div>
+      <div class="f-group" style="margin-bottom:12px">
+        <label class="f-label">測試人員 <span style="color:var(--rust)">＊必填</span></label>
+        <select class="f-select" id="std-tester"></select>
+      </div>
+      <div class="f-group" style="margin-bottom:12px">
+        <label class="f-label">類型 <span style="color:var(--rust)">＊必填</span></label>
+        <select class="f-select" id="std-type">
+          <option value="">— 選擇 —</option>
+          <option value="商場">商場</option>
+          <option value="MPOS">MPOS</option>
+          <option value="OB紀念品">OB紀念品</option>
+          <option value="OB票務">OB票務</option>
+        </select>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;margin-bottom:4px">
+        <input type="checkbox" id="std-print-creds"> 列印時附上支付帳密
+      </label>
+      <div style="font-size:12px;color:var(--muted)">樣本名稱：<span id="std-name-preview">（請先選擇類型）</span></div>
+      <div class="modal-actions">
+        <button class="btn btn-outline" onclick="hideStdForm()">返回</button>
+        <button class="btn btn-primary" onclick="createStandardSample()">建立標準版樣本</button>
+      </div>
     </div>
-    <div class="modal-actions">
+    <div class="modal-actions" id="sample-new-cancel">
       <button class="btn btn-outline" onclick="closeNewSampleModal()">取消</button>
     </div>
   </div>
@@ -399,7 +461,7 @@ a{color:var(--sage);font-size:11px}
       <input class="f-input" id="m-date" readonly />
     </div>
     <div class="f-group">
-      <label class="f-label">選擇驗證樣本</label>
+      <label class="f-label">選擇樣本</label>
       <select class="f-select" id="m-sample" style="height:38px;padding:4px 10px"></select>
     </div>
     <div class="modal-actions">
@@ -470,6 +532,7 @@ let backupTimer=null;
 let sampleSaveTimers={};
 const openSampleIds=new Set();
 const openHistoryIds=new Set();
+let copySourceId=null;
 
 let MEMBERS=['Daniel','JiaJie','Sam','Kai','Luna'];
 let CONTACTS=['銷售組','OB票務','OB紀念品','商場帳務'];
@@ -551,7 +614,7 @@ function startListeners(){
   unsubSamples=db.collection('samples').orderBy('createdAt','desc').onSnapshot(snap=>{
     samples=snap.docs.map(d=>({id:d.id,...d.data()}));
     renderSamples();
-  },err=>{console.error(err);showToast('讀取驗證樣本失敗，請確認 Firestore 設定','err');});
+  },err=>{console.error(err);showToast('讀取樣本失敗，請確認 Firestore 設定','err');});
 }
 function stopListeners(){
   if(unsubTasks)unsubTasks();
@@ -661,7 +724,6 @@ function addTask(){
   const end=document.getElementById('f-end').value;
   if(!name){showToast('請輸入任務名稱','err');return;}
   if(!purpose){showToast('請填寫測試目的','err');return;}
-  if(!system){showToast('請選擇支付功能','err');return;}
   if(!start){showToast('請選擇開始日期','err');return;}
   if(!end){showToast('請選擇結束日期','err');return;}
   if(!selectedMembers.length){showToast('請至少選擇一位測試人員','err');return;}
@@ -890,7 +952,7 @@ function render(){
         ${(t.sampleRuns&&t.sampleRuns.length)?`<div style="padding:8px 0;border-top:1px solid var(--border)">
           <button class="btn btn-outline" onclick="toggleHistory('${t.id}')">📊 清單紀錄（${t.sampleRuns.length}）</button>
           <div id="hist-${t.id}" style="display:${openHistoryIds.has(t.id)?'block':'none'};margin-top:8px;font-size:12px;color:var(--muted);max-height:110px;overflow-y:auto">
-            ${t.sampleRuns.slice().reverse().map(r=>`<div style="padding:2px 0">・${new Date(r.generatedAt).toLocaleString('zh-TW')}　使用「${r.sampleName}」${r.sampleType==='custom'?'(自訂)':'(隨機)'}</div>`).join('')}
+            ${t.sampleRuns.slice().reverse().map(r=>`<div style="padding:2px 0">・${new Date(r.generatedAt).toLocaleString('zh-TW')}　使用「${r.sampleName}」(${sampleKindLabel(r.sampleType)})</div>`).join('')}
           </div>
         </div>`:''}
         <div class="task-actions">
@@ -1043,7 +1105,10 @@ function restoreBackup(id){
     .catch(e=>showToast('還原失敗：'+e.message,'err'));
 }
 
-/* ============ 驗證樣本 ============ */
+/* ============ 樣本 ============ */
+function sampleKindLabel(type,standard){
+  return (standard||type==='standard')?'標準版':(type==='custom'?'自訂':'隨機');
+}
 function blankRow(seq){
   return{seq,amount:null,pay1:null,pay2:null,pay3:null,pay1Type:null,pay2Type:null,pay3Type:null,member:false,diplomat:false,carrier:false,taxId:false,taxFree:false,invoiceNo:null,notes:null,voided:false,voidRefSeq:null};
 }
@@ -1119,7 +1184,88 @@ function generateRandomRows(){
 }
 function openNewSampleModal(){
   document.getElementById('sample-new-name').value='';
+  hideStdForm();
   document.getElementById('sample-new-modal-bg').classList.add('open');
+}
+function showStdForm(){
+  const d=new Date();
+  document.getElementById('std-date').value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  document.getElementById('std-tester').innerHTML='<option value="">— 選擇 —</option>'+MEMBERS.map(m=>`<option value="${m}">${m}</option>`).join('');
+  document.getElementById('std-type').value='';
+  document.getElementById('std-print-creds').checked=false;
+  document.getElementById('std-name-preview').textContent='（請先選擇類型）';
+  document.getElementById('std-type').onchange=function(){
+    document.getElementById('std-name-preview').textContent=this.value?this.value+'_標準版':'（請先選擇類型）';
+  };
+  document.getElementById('sample-new-basic').style.display='none';
+  document.getElementById('sample-new-cancel').style.display='none';
+  document.getElementById('sample-new-std').style.display='block';
+}
+function hideStdForm(){
+  document.getElementById('sample-new-basic').style.display='block';
+  document.getElementById('sample-new-cancel').style.display='flex';
+  document.getElementById('sample-new-std').style.display='none';
+}
+function createStandardSample(){
+  const date=document.getElementById('std-date').value;
+  const tester=document.getElementById('std-tester').value;
+  const stdType=document.getElementById('std-type').value;
+  if(!date){showToast('請選擇日期','err');return;}
+  if(!tester){showToast('請選擇測試人員','err');return;}
+  if(!stdType){showToast('請選擇類型','err');return;}
+  db.collection('samples').add({
+    name:stdType+'_標準版',type:'custom',standard:true,
+    stdDate:date,stdTester:tester,stdType,
+    printCreds:document.getElementById('std-print-creds').checked,
+    rows:generateCustomRows(),activityNote:'',
+    createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  }).then(()=>{closeNewSampleModal();showToast('✓ 標準版樣本已建立');scheduleBackup();})
+    .catch(e=>showToast('建立失敗：'+e.message,'err'));
+}
+function updateCopyPreview(){
+  const types=[...document.querySelectorAll('#copy-types input:checked')].map(i=>i.value);
+  document.getElementById('copy-name-preview').textContent=types.length?types.map(t=>t+'_標準版').join('、'):'（請先勾選類型）';
+}
+function openCopySampleModal(id){
+  const src=samples.find(s=>s.id===id);if(!src)return;
+  copySourceId=id;
+  document.getElementById('copy-src-name').textContent=src.name;
+  document.querySelectorAll('#copy-types input').forEach(i=>{
+    i.checked=i.value!==src.stdType;
+    i.onchange=updateCopyPreview;
+  });
+  document.getElementById('copy-date').value=src.stdDate||'';
+  document.getElementById('copy-tester').innerHTML='<option value="">— 選擇 —</option>'+MEMBERS.map(m=>`<option value="${m}"${m===src.stdTester?' selected':''}>${m}</option>`).join('');
+  updateCopyPreview();
+  document.getElementById('sample-copy-modal-bg').classList.add('open');
+}
+function closeCopySampleModal(){document.getElementById('sample-copy-modal-bg').classList.remove('open');}
+function copyStandardSample(){
+  const src=samples.find(s=>s.id===copySourceId);
+  if(!src){showToast('找不到來源樣本','err');return;}
+  const types=[...document.querySelectorAll('#copy-types input:checked')].map(i=>i.value);
+  const date=document.getElementById('copy-date').value;
+  const tester=document.getElementById('copy-tester').value;
+  if(!types.length){showToast('請至少勾選一個類型','err');return;}
+  if(!date){showToast('請選擇日期','err');return;}
+  if(!tester){showToast('請選擇測試人員','err');return;}
+  Promise.all(types.map(t=>db.collection('samples').add({
+    name:t+'_標準版',type:'custom',standard:true,
+    stdDate:date,stdTester:tester,stdType:t,
+    printCreds:!!src.printCreds,
+    rows:JSON.parse(JSON.stringify(src.rows||[])),
+    activityNote:src.activityNote||'',
+    createdAt:firebase.firestore.FieldValue.serverTimestamp(),
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  }))).then(()=>{closeCopySampleModal();showToast('✓ 已建立 '+types.length+' 份標準版樣本');scheduleBackup();})
+    .catch(e=>showToast('複製失敗：'+e.message,'err'));
+}
+function setSamplePrintCreds(id,checked){
+  const s=samples.find(s=>s.id===id);if(s)s.printCreds=checked;
+  db.collection('samples').doc(id).update({printCreds:checked,updatedAt:firebase.firestore.FieldValue.serverTimestamp()})
+    .then(()=>scheduleBackup())
+    .catch(e=>showToast('儲存失敗：'+e.message,'err'));
 }
 function closeNewSampleModal(){document.getElementById('sample-new-modal-bg').classList.remove('open');}
 function createSample(type){
@@ -1333,7 +1479,7 @@ function renderSamples(){
   const ae=document.activeElement;
   if(ae&&wrap.contains(ae)&&(ae.tagName==='TEXTAREA'||(ae.tagName==='INPUT'&&(ae.type==='text'||ae.type==='number'))))return;
   if(!samples.length){
-    wrap.innerHTML='<div class="empty"><span class="e-icon">🧪</span>尚無驗證樣本，請點選右上角「＋ 新增樣本」建立</div>';
+    wrap.innerHTML='<div class="empty"><span class="e-icon">🧪</span>尚無樣本，請點選右上角「＋ 新增樣本」建立</div>';
     return;
   }
   wrap.innerHTML=samples.map(s=>{
@@ -1346,19 +1492,21 @@ function renderSamples(){
           <div style="display:flex;align-items:center;gap:8px">
             <span class="sample-title">${s.name}</span>
             <button class="cred-edit-btn" style="font-size:12px" title="修改名稱" onclick="event.stopPropagation();renameSample('${s.id}')">✎</button>
-            <span class="sample-badge ${s.type}">${s.type==='custom'?'自訂樣本':'隨機樣本'}</span>
+            <span class="sample-badge ${s.standard?'standard':s.type}">${s.standard?'標準版':(s.type==='custom'?'自訂樣本':'隨機樣本')}</span>
           </div>
-          <div class="sample-meta">共 ${(s.rows||[]).length} 筆交易${createdLabel?'　建立於 '+createdLabel:''}</div>
+          <div class="sample-meta">共 ${(s.rows||[]).length} 筆交易${s.standard?'　類型：'+s.stdType+'　日期：'+s.stdDate+'　測試人員：'+s.stdTester:''}${createdLabel?'　建立於 '+createdLabel:''}</div>
         </div>
         <div class="sample-actions" onclick="event.stopPropagation()">
+          ${s.standard?`<button class="btn btn-outline" onclick="openCopySampleModal('${s.id}')">⧉ 複製</button>`:''}
           ${s.type==='random'?`<button class="btn btn-outline" onclick="regenerateRandomSample('${s.id}')">🎲 重新產生</button>`:''}
           <button class="btn btn-outline" style="color:var(--rust);border-color:var(--rust)" onclick="deleteSample('${s.id}')">刪除</button>
         </div>
       </div>
       <div class="sample-detail">
+        ${s.standard?`<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:12px;cursor:pointer"><input type="checkbox" ${s.printCreds?'checked':''} onchange="setSamplePrintCreds('${s.id}',this.checked)">列印時附上支付帳密</label>`:''}
         <div class="f-group" style="margin-bottom:14px">
           <label class="f-label">活動說明</label>
-          <textarea class="edit-input" id="samp-${s.id}-activityNote" rows="3" placeholder="選填，可輸入或貼上本次驗證樣本對應的活動內容說明（貼上表格會自動偵測並轉為表格呈現）" style="resize:vertical;font-family:var(--sans);line-height:1.6" oninput="updateSampleActivityNote('${s.id}',this.value)">${s.activityNote||''}</textarea>
+          <textarea class="edit-input" id="samp-${s.id}-activityNote" rows="3" placeholder="選填，可輸入或貼上本次樣本對應的活動內容說明（貼上表格會自動偵測並轉為表格呈現）" style="resize:vertical;font-family:var(--sans);line-height:1.6" oninput="updateSampleActivityNote('${s.id}',this.value)">${s.activityNote||''}</textarea>
           <div id="samp-${s.id}-activityPreview" style="display:none;margin-top:8px"></div>
         </div>
         ${buildSampleTableHtml(s)}
@@ -1376,9 +1524,9 @@ function openModal(id){
   document.getElementById('m-date').value=new Date().toLocaleDateString('zh-TW');
   const sel=document.getElementById('m-sample');
   if(!samples.length){
-    sel.innerHTML='<option value="">尚無驗證樣本，請先至「驗證樣本」頁建立</option>';
+    sel.innerHTML='<option value="">尚無樣本，請先至「樣本」頁建立</option>';
   }else{
-    sel.innerHTML='<option value="">— 請選擇驗證樣本 —</option>'+samples.map(s=>`<option value="${s.id}">${s.name}（${s.type==='custom'?'自訂':'隨機'}・${(s.rows||[]).length}筆）</option>`).join('');
+    sel.innerHTML='<option value="">— 請選擇樣本 —</option>'+samples.map(s=>`<option value="${s.id}">${s.name}（${sampleKindLabel(s.type,s.standard)}・${(s.rows||[]).length}筆）</option>`).join('');
   }
   document.getElementById('modal-bg').classList.add('open');
 }
@@ -1413,7 +1561,7 @@ function buildSampleUsedCredsHtml(sample){
 function doExport(){
   const t=tasks.find(t=>t.id===currentTaskId);if(!t)return;
   const sampleId=document.getElementById('m-sample').value;
-  if(!sampleId){showToast('請先選擇驗證樣本','err');return;}
+  if(!sampleId){showToast('請先選擇樣本','err');return;}
   const sample=samples.find(s=>s.id===sampleId);
   if(!sample){showToast('找不到所選樣本，請重新選擇','err');return;}
   const exportRows=sample.type==='random'?biasRowsForTaskSystem(sample.rows||[],t.system):(sample.rows||[]);
@@ -1520,12 +1668,13 @@ td.dash{background:#f5f3ef;color:#c5bfb8}
         <div class="meta-item"><span class="meta-label">配合窗口</span><span>${(t.contacts||[]).join('、')||'—'}</span></div>
         <div class="meta-item"><span class="meta-label">狀態</span><span>${si.label}</span></div>
         ${(t.purpose||t.notes)?`<div class="meta-item"><span class="meta-label">測試目的</span><span>${t.purpose||t.notes}</span></div>`:''}
-        <div class="meta-item"><span class="meta-label">驗證樣本</span><span>${sample.name}（${sample.type==='custom'?'自訂':'隨機'}）</span></div>
+        <div class="meta-item"><span class="meta-label">樣本</span><span>${sample.name}（${sampleKindLabel(sample.type,sample.standard)}）</span></div>
+        ${sample.standard?`<div class="meta-item"><span class="meta-label">樣本日期</span><span>${sample.stdDate}</span></div><div class="meta-item"><span class="meta-label">樣本測試人員</span><span>${sample.stdTester}</span></div>`:''}
       </div>
     </div>
   </div>
   ${activityBlockHtml}
-  <div class="creds-strip">${buildSampleUsedCredsHtml({rows:exportRows})}</div>
+  ${(sample.standard&&!sample.printCreds)?'':`<div class="creds-strip">${buildSampleUsedCredsHtml({rows:exportRows})}</div>`}
   <div class="table-wrap"><table>
     <colgroup><col style="width:32px"><col style="width:50px"><col style="width:92px"><col style="width:92px"><col style="width:92px"><col style="width:38px"><col style="width:42px"><col style="width:38px"><col style="width:38px"><col style="width:38px"><col style="width:56px"><col style="width:150px"><col style="width:44px"><col class="col-result"></colgroup>
     <thead><tr><th>流水號</th><th>消費金額</th><th>支付1</th><th>支付2</th><th>支付3</th><th>會員</th><th>外交官</th><th>載具</th><th>統編</th><th>免稅</th><th>發票號碼</th><th class="th-item">備註說明</th><th>作廢</th><th>結果</th></tr></thead>
@@ -1547,7 +1696,7 @@ td.dash{background:#f5f3ef;color:#c5bfb8}
   const history=[...(t.sampleRuns||[]),{
     sampleId:sample.id,
     sampleName:sample.name,
-    sampleType:sample.type,
+    sampleType:sample.standard?'standard':sample.type,
     rows:exportRows,
     generatedAt:new Date().toISOString()
   }];
