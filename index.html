@@ -125,6 +125,7 @@ html,body{min-height:100%;background:var(--bg);color:var(--ink);font-family:var(
 .pay-cell{display:flex;gap:4px;align-items:center}
 .pay-cell select.st-pay{flex:1;min-width:64px}
 .pay-cell select.st-paytype{width:58px;min-width:58px;flex-shrink:0;padding:5px 2px}
+.sample-table .pay-cell input.st-payamt{width:64px;min-width:64px;flex-shrink:0;padding:5px 4px}
 .sample-table input[type="checkbox"]{width:16px;height:16px;cursor:pointer}
 .sample-toolbar{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
 .activity-preview-table{border-collapse:collapse;width:100%;font-size:12px;border:1px solid var(--border);border-radius:6px;overflow:hidden}
@@ -1110,7 +1111,7 @@ function sampleKindLabel(type,standard){
   return (standard||type==='standard')?'標準版':(type==='custom'?'自訂':'隨機');
 }
 function blankRow(seq){
-  return{seq,amount:null,pay1:null,pay2:null,pay3:null,pay1Type:null,pay2Type:null,pay3Type:null,member:false,diplomat:false,carrier:false,taxId:false,taxFree:false,invoiceNo:null,notes:null,voided:false,voidRefSeq:null};
+  return{seq,amount:null,pay1:null,pay2:null,pay3:null,pay1Type:null,pay2Type:null,pay3Type:null,pay1Amt:null,pay2Amt:null,pay3Amt:null,member:false,diplomat:false,carrier:false,taxId:false,taxFree:false,invoiceNo:null,notes:null,voided:false,voidRefSeq:null};
 }
 function randInt(min,max){return Math.floor(Math.random()*(max-min+1))+min;}
 function randPick(arr){return arr[Math.floor(Math.random()*arr.length)];}
@@ -1120,15 +1121,16 @@ function generateCustomRows(){
   return rows;
 }
 function enforceCashLast(r){
-  const pairs=[['pay1','pay1Type'],['pay2','pay2Type'],['pay3','pay3Type']];
-  const filled=pairs.filter(([f])=>r[f]).map(([f,tf])=>({val:r[f],type:r[tf]}));
+  const pairs=[['pay1','pay1Type','pay1Amt'],['pay2','pay2Type','pay2Amt'],['pay3','pay3Type','pay3Amt']];
+  const filled=pairs.filter(([f])=>r[f]).map(([f,tf,af])=>({val:r[f],type:r[tf],amt:r[af]}));
   if(filled.some(p=>p.val==='現金')){
     const cash=filled.filter(p=>p.val==='現金');
     const others=filled.filter(p=>p.val!=='現金');
     const ordered=[...others,...cash];
-    pairs.forEach(([f,tf],idx)=>{
+    pairs.forEach(([f,tf,af],idx)=>{
       r[f]=ordered[idx]?ordered[idx].val:null;
       r[tf]=ordered[idx]?ordered[idx].type:null;
+      r[af]=ordered[idx]&&ordered[idx].amt!==undefined?ordered[idx].amt:null;
     });
   }
 }
@@ -1305,10 +1307,44 @@ function toggleSample(id){
   const el=document.getElementById('si-'+id);
   if(el)el.classList.toggle('open');
 }
+const PAY_AMT_FIELDS=['pay1Amt','pay2Amt','pay3Amt'];
+function paySum(row){return PAY_AMT_FIELDS.reduce((a,k)=>a+(row[k]||0),0);}
+function refreshAmtWarn(sampleId,rowIndex){
+  const s=samples.find(s=>s.id===sampleId);if(!s||!s.standard)return;
+  const row=s.rows[rowIndex];if(!row)return;
+  const el=document.getElementById(`samp-${sampleId}-${rowIndex}-amount`);
+  if(el)el.style.borderColor=paySum(row)>(row.amount||0)?'var(--rust)':'';
+}
+function commitSampleAmount(sampleId,rowIndex){
+  const s=samples.find(s=>s.id===sampleId);if(!s||!s.standard)return;
+  const row=s.rows[rowIndex];if(!row)return;
+  const sum=paySum(row);
+  if(sum>(row.amount||0)){
+    row.amount=sum;
+    const el=document.getElementById(`samp-${sampleId}-${rowIndex}-amount`);
+    if(el){el.value=sum;el.style.borderColor='';}
+    showToast(`消費金額不可低於各支付金額加總（${sum}），已自動調整`,'err');
+    clearTimeout(sampleSaveTimers[sampleId]);
+    sampleSaveTimers[sampleId]=setTimeout(()=>saveSampleRows(sampleId),700);
+  }
+}
 function updateSampleRowField(sampleId,rowIndex,field,value){
   const s=samples.find(s=>s.id===sampleId);if(!s)return;
   const row=s.rows[rowIndex];if(!row)return;
   row[field]=value;
+  if(PAY_AMT_FIELDS.includes(field)&&value!==null){
+    let v=Math.max(0,Math.floor(value));
+    const others=PAY_AMT_FIELDS.filter(k=>k!==field).reduce((a,k)=>a+(row[k]||0),0);
+    const limit=Math.max(0,(row.amount||0)-others);
+    if(v>limit){
+      v=limit;
+      showToast(row.amount?`各支付金額加總不可超過消費金額（${row.amount}），此欄位最多可輸入 ${limit}`:'請先輸入消費金額','err');
+    }
+    row[field]=v;
+    const aEl=document.getElementById(`samp-${sampleId}-${rowIndex}-${field}`);
+    if(aEl&&Number(aEl.value)!==v)aEl.value=v;
+  }
+  if(field==='amount'||PAY_AMT_FIELDS.includes(field))refreshAmtWarn(sampleId,rowIndex);
   if(field==='pay1'||field==='pay2'||field==='pay3'){
     enforceCashLast(row);
     enforceStoredValueMember(row);
@@ -1329,7 +1365,15 @@ function updateSampleRowField(sampleId,rowIndex,field,value){
         typeEl.style.display=eligible?'inline-block':'none';
         typeEl.value=row[tf]||'';
       }
+      const af=f+'Amt';
+      if(!row[f])row[af]=null;
+      const amtEl=document.getElementById(`samp-${sampleId}-${rowIndex}-${af}`);
+      if(amtEl){
+        amtEl.style.display=row[f]?'inline-block':'none';
+        amtEl.value=row[af]??'';
+      }
     });
+    refreshAmtWarn(sampleId,rowIndex);
   }
   if(field==='diplomat'||field==='carrier'||field==='taxId'){
     enforceTaxIdExclusivity(row,field);
@@ -1381,36 +1425,20 @@ function updateSampleActivityNote(sampleId,value){
 function payOptionsHtml(selected){
   return'<option value="">—</option>'+SAMPLE_PAY_OPTIONS.map(p=>`<option value="${p}"${selected===p?' selected':''}>${p}</option>`).join('');
 }
+function payCellHtml(s,r,i,n){
+  const f='pay'+n,tf=f+'Type',af=f+'Amt',base=`samp-${s.id}-${i}-${f}`;
+  const amt=s.standard?`<input type="number" min="0" step="1" class="st-payamt" id="${base}Amt" placeholder="金額" style="display:${r[f]?'inline-block':'none'}" value="${r[af]??''}" oninput="updateSampleRowField('${s.id}',${i},'${af}',this.value===''?null:Number(this.value))">`:'';
+  return`<td><div class="pay-cell"><select class="st-pay" id="${base}" onchange="updateSampleRowField('${s.id}',${i},'${f}',this.value||null)">${payOptionsHtml(r[f])}</select><select class="st-paytype" id="${base}Type" style="display:${CARD_TYPE_ELIGIBLE.includes(r[f])?'inline-block':'none'}" onchange="updateSampleRowField('${s.id}',${i},'${tf}',this.value||null)"><option value="">類型</option>${CARD_TYPE_OPTIONS.map(o=>`<option value="${o}"${r[tf]===o?' selected':''}>${o}</option>`).join('')}</select>${amt}</div></td>`;
+}
 function buildSampleTableHtml(s){
   const rowsHtml=s.rows.map((r,i)=>{
     const otherSeqOpts=s.rows.filter((rr,ri)=>ri<i).map(rr=>`<option value="${rr.seq}"${r.voidRefSeq===rr.seq?' selected':''}>${rr.seq}</option>`).join('');
     return`<tr>
     <td class="st-seq">${r.seq}</td>
-    <td><input type="number" class="st-amount" id="samp-${s.id}-${i}-amount" value="${r.amount??''}" oninput="updateSampleRowField('${s.id}',${i},'amount',this.value?Number(this.value):null)"></td>
-    <td>
-      <div class="pay-cell">
-        <select class="st-pay" id="samp-${s.id}-${i}-pay1" onchange="updateSampleRowField('${s.id}',${i},'pay1',this.value||null)">${payOptionsHtml(r.pay1)}</select>
-        <select class="st-paytype" id="samp-${s.id}-${i}-pay1Type" style="display:${CARD_TYPE_ELIGIBLE.includes(r.pay1)?'inline-block':'none'}" onchange="updateSampleRowField('${s.id}',${i},'pay1Type',this.value||null)">
-          <option value="">類型</option>${CARD_TYPE_OPTIONS.map(o=>`<option value="${o}"${r.pay1Type===o?' selected':''}>${o}</option>`).join('')}
-        </select>
-      </div>
-    </td>
-    <td>
-      <div class="pay-cell">
-        <select class="st-pay" id="samp-${s.id}-${i}-pay2" onchange="updateSampleRowField('${s.id}',${i},'pay2',this.value||null)">${payOptionsHtml(r.pay2)}</select>
-        <select class="st-paytype" id="samp-${s.id}-${i}-pay2Type" style="display:${CARD_TYPE_ELIGIBLE.includes(r.pay2)?'inline-block':'none'}" onchange="updateSampleRowField('${s.id}',${i},'pay2Type',this.value||null)">
-          <option value="">類型</option>${CARD_TYPE_OPTIONS.map(o=>`<option value="${o}"${r.pay2Type===o?' selected':''}>${o}</option>`).join('')}
-        </select>
-      </div>
-    </td>
-    <td>
-      <div class="pay-cell">
-        <select class="st-pay" id="samp-${s.id}-${i}-pay3" onchange="updateSampleRowField('${s.id}',${i},'pay3',this.value||null)">${payOptionsHtml(r.pay3)}</select>
-        <select class="st-paytype" id="samp-${s.id}-${i}-pay3Type" style="display:${CARD_TYPE_ELIGIBLE.includes(r.pay3)?'inline-block':'none'}" onchange="updateSampleRowField('${s.id}',${i},'pay3Type',this.value||null)">
-          <option value="">類型</option>${CARD_TYPE_OPTIONS.map(o=>`<option value="${o}"${r.pay3Type===o?' selected':''}>${o}</option>`).join('')}
-        </select>
-      </div>
-    </td>
+    <td><input type="number" class="st-amount" id="samp-${s.id}-${i}-amount" value="${r.amount??''}" oninput="updateSampleRowField('${s.id}',${i},'amount',this.value?Number(this.value):null)" onchange="commitSampleAmount('${s.id}',${i})"></td>
+    ${payCellHtml(s,r,i,1)}
+    ${payCellHtml(s,r,i,2)}
+    ${payCellHtml(s,r,i,3)}
     <td><input type="checkbox" id="samp-${s.id}-${i}-member" ${r.member?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'member',this.checked)"></td>
     <td><input type="checkbox" id="samp-${s.id}-${i}-diplomat" ${r.diplomat?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'diplomat',this.checked)"></td>
     <td><input type="checkbox" id="samp-${s.id}-${i}-carrier" ${r.carrier?'checked':''} onchange="updateSampleRowField('${s.id}',${i},'carrier',this.checked)"></td>
@@ -1459,13 +1487,14 @@ function onVoidToggle(sampleId,rowIndex,checkboxEl){
     const s=samples.find(s=>s.id===sampleId);
     const row=s?s.rows[rowIndex]:null;
     if(row){
-      row.amount=null;row.pay1=null;row.pay2=null;row.pay3=null;
+      row.amount=null;row.pay1=null;row.pay2=null;row.pay3=null;row.pay1Amt=null;row.pay2Amt=null;row.pay3Amt=null;
       row.member=false;row.diplomat=false;row.carrier=false;row.taxId=false;row.taxFree=false;
       row.invoiceNo=null;row.notes=null;
     }
     const prefix=`samp-${sampleId}-${rowIndex}-`;
     const amtEl=document.getElementById(prefix+'amount');if(amtEl)amtEl.value='';
-    ['pay1','pay2','pay3'].forEach(f=>{const el=document.getElementById(prefix+f);if(el)el.value='';});
+    ['pay1','pay2','pay3'].forEach(f=>{const el=document.getElementById(prefix+f);if(el)el.value='';const ae=document.getElementById(prefix+f+'Amt');if(ae){ae.value='';ae.style.display='none';}const te=document.getElementById(prefix+f+'Type');if(te){te.value='';te.style.display='none';}});
+    refreshAmtWarn(sampleId,rowIndex);
     ['member','diplomat','carrier','taxId','taxFree'].forEach(f=>{const el=document.getElementById(prefix+f);if(el)el.checked=false;});
     const invEl=document.getElementById(prefix+'invoiceNo');if(invEl)invEl.value='';
     const noteEl=document.getElementById(prefix+'notes');if(noteEl)noteEl.value='';
@@ -1558,6 +1587,12 @@ function buildSampleUsedCredsHtml(sample){
   return pills.length?pills.join(''):'<div style="font-size:12px;color:#9b9289;padding:8px">此樣本使用的支付方式在系統內皆無對應帳密資料</div>';
 }
 
+function payPrintCell(r,n){
+  const f='pay'+n,v=r[f];
+  if(!v)return'<td></td>';
+  const amt=r[f+'Amt'];
+  return`<td>${v}${r[f+'Type']?`（${r[f+'Type']}）`:''}${amt!==null&&amt!==undefined&&amt!==''?`<div style="font-size:9px;color:#7a7068">$${amt}</div>`:''}</td>`;
+}
 function doExport(){
   const t=tasks.find(t=>t.id===currentTaskId);if(!t)return;
   const sampleId=document.getElementById('m-sample').value;
@@ -1582,7 +1617,7 @@ function doExport(){
   const rowsHtml=exportRows.map(r=>`<tr>
       <td class="td-no">${r.seq}</td>
       <td class="td-amt">${r.amount??''}</td>
-      <td>${r.pay1?r.pay1+(r.pay1Type?`（${r.pay1Type}）`:''):''}</td><td>${r.pay2?r.pay2+(r.pay2Type?`（${r.pay2Type}）`:''):''}</td><td>${r.pay3?r.pay3+(r.pay3Type?`（${r.pay3Type}）`:''):''}</td>
+      ${payPrintCell(r,1)}${payPrintCell(r,2)}${payPrintCell(r,3)}
       <td>${ck(r.member)}</td><td>${ck(r.diplomat)}</td><td>${ck(r.carrier)}</td><td>${ck(r.taxId)}</td><td>${ck(r.taxFree)}</td>
       <td>${r.invoiceNo||''}</td>
       <td class="td-item">${r.notes||''}</td>
