@@ -39,6 +39,24 @@
       body {
         background: #fff !important;
       }
+      /* 當開啟簽核單預覽列印時，只列印簽核單本體 */
+      body.printing-report #main-workspace,
+      body.printing-report header {
+        display: none !important;
+      }
+      body.printing-report #signoff-modal {
+        position: static !important;
+        background: #fff !important;
+        padding: 0 !important;
+        display: block !important;
+      }
+      body.printing-report #signoff-card {
+        box-shadow: none !important;
+        border: none !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+      }
     }
   </style>
 </head>
@@ -67,7 +85,7 @@
   </header>
 
   <!-- 主內容區 -->
-  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
+  <main id="main-workspace" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
 
     <!-- 情境切換與快速算式驗證器 -->
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 mb-6 no-print">
@@ -307,6 +325,21 @@
           <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
             <div id="progress-bar" class="bg-indigo-600 h-full transition-all duration-300" style="width: 0%"></div>
           </div>
+
+          <!-- 12 項全勾選完成後的簽核單產出橫幅 -->
+          <div id="complete-banner" class="hidden mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-all">
+            <div class="flex items-center gap-2.5">
+              <span class="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0">✓</span>
+              <div>
+                <div class="text-sm font-bold text-emerald-900">12 項基本檢核已全數通過！</div>
+                <div class="text-xs text-emerald-700">可立即產出正式版更驗收簽核單，供列印與人員／主管簽名存檔</div>
+              </div>
+            </div>
+            <button onclick="openSignoffModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-lg shadow-sm transition shrink-0 flex items-center justify-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              產出正式簽名檢核表
+            </button>
+          </div>
         </div>
 
         <!-- 區塊一：版面與格式檢查 (對應 ① ~ ④) -->
@@ -374,9 +407,9 @@
               <div class="flex-1 text-sm">
                 <div class="font-semibold text-slate-800 flex items-center gap-2">
                   <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">5</span>
-                  明細「單價 × 數量 ＝ 小計」逐行驗算無誤
+                  商品右側稅別記號正確（應稅 TX/TN、免稅不印或 EX、零稅 TZ）
                 </div>
-                <p class="text-xs text-slate-500 mt-0.5">特別檢查<strong>買一送一、第二件半價、滿額折扣、負數折讓行</strong>，確認折扣金額正確扣減，未出現多算或少算 1 元。</p>
+                <p class="text-xs text-slate-500 mt-0.5">應稅品項印出 <strong>TX / TN</strong>；免稅品項（黃金、農產品）通常<strong>留空不印</strong>（或依系統規範印 EX）；零稅率（外交官）印 <strong>TZ / 零稅</strong>（或依規範留空），嚴禁誤印為應稅 TX/TN。</p>
               </div>
             </label>
 
@@ -463,6 +496,94 @@
     </div>
   </main>
 
+  <!-- 正式可列印簽名檢核表 Modal -->
+  <div id="signoff-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs overflow-y-auto p-4 sm:p-6 flex items-start justify-center">
+    <div id="signoff-card" class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-4">
+      <!-- 彈窗操作列（列印時自動隱藏） -->
+      <div class="bg-slate-800 text-white px-5 py-3 flex items-center justify-between no-print">
+        <span class="text-sm font-bold">POS 版更驗收簽核單預覽</span>
+        <div class="flex items-center gap-2">
+          <button onclick="printSignoffSheet()" class="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
+            列印此簽核單 / 存成 PDF
+          </button>
+          <button onclick="closeSignoffModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">
+            關閉
+          </button>
+        </div>
+      </div>
+
+      <!-- 正式紙本簽核表內容 -->
+      <div class="p-6 sm:p-8 text-slate-900 space-y-5">
+        <div class="border-b-2 border-slate-900 pb-3 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
+          <div>
+            <div class="text-xs font-bold tracking-widest text-slate-500 uppercase">POS Release QA Verification Sheet</div>
+            <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-0.5">POS 程式更版 — 發票格式與數字人工檢核表</h2>
+          </div>
+          <div class="text-xs text-slate-600 mono">
+            產出時間：<span id="report-timestamp"></span>
+          </div>
+        </div>
+
+        <!-- 填寫資訊欄（可於網頁輸入或印出後手寫） -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-300">
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">POS 版號 / 更版單號：</label>
+            <input type="text" placeholder="請輸入或印出後手寫" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">測試機台 / 櫃號：</label>
+            <input type="text" placeholder="例：L32813 / B0527" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500">
+          </div>
+          <div>
+            <label class="font-bold text-slate-700 block mb-1">測試樣張發票號碼：</label>
+            <input type="text" placeholder="例：NE-58207426" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500">
+          </div>
+        </div>
+
+        <!-- 12 項檢核明細表格 -->
+        <table class="w-full text-xs border-collapse border border-slate-400">
+          <thead>
+            <tr class="bg-slate-100 text-slate-800">
+              <th class="border border-slate-400 px-2.5 py-2 w-12 text-center">項次</th>
+              <th class="border border-slate-400 px-3 py-2 text-left">查核項目內容</th>
+              <th class="border border-slate-400 px-2.5 py-2 w-20 text-center">查核結果</th>
+            </tr>
+          </thead>
+          <tbody id="report-table-body">
+            <!-- 動態帶入 12 項標題 -->
+          </tbody>
+        </table>
+
+        <!-- 備註欄 -->
+        <div class="text-xs">
+          <div class="font-bold text-slate-700 mb-1">異常說明 / 備註事項：</div>
+          <textarea rows="2" placeholder="若有特殊備註可在此輸入，或印出後手寫補充..." class="w-full border border-slate-300 rounded-lg p-2 text-xs focus:outline-none focus:border-indigo-500"></textarea>
+        </div>
+
+        <!-- 簽名欄 -->
+        <div class="grid grid-cols-2 gap-6 pt-4">
+          <div class="border border-slate-400 rounded-xl p-3.5">
+            <div class="text-xs font-bold text-slate-700">測試／核對人員簽名：</div>
+            <div class="h-12 border-b border-dashed border-slate-400 my-2"></div>
+            <div class="text-[11px] text-slate-500 flex justify-between">
+              <span>員工編號：______________</span>
+              <span>日期：____ / ____ / ____</span>
+            </div>
+          </div>
+          <div class="border border-slate-400 rounded-xl p-3.5">
+            <div class="text-xs font-bold text-slate-700">單位主管／覆核人員簽名：</div>
+            <div class="h-12 border-b border-dashed border-slate-400 my-2"></div>
+            <div class="text-[11px] text-slate-500 flex justify-between">
+              <span>員工編號：______________</span>
+              <span>日期：____ / ____ / ____</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script>
     // 依據 TAIPEI 101 實體雙聯發票設計三種測試驗證模式
     const modes = {
@@ -489,7 +610,7 @@
         showBuyer: true,
         items: [
           { code: 'F04', name: '精品腕錶保養組', qty: '2*4,200', sub: '8,400 TX' },
-          { code: 'G01', name: '投資型純金紀念幣 1錢', qty: '1*12,000', sub: '12,000 免稅' }
+          { code: 'G01', name: '投資型純金紀念幣 1錢', qty: '1*12,000', sub: '12,000 (免稅不印記號)' }
         ],
         taxBreakdown: [
           { label: '應稅銷售額(未稅):', val: '8,000' },
@@ -507,7 +628,7 @@
         buyerTaxId: '買方:外交免稅證',
         showBuyer: true,
         items: [
-          { code: 'F04', name: '限量機械腕錶（外交免稅）', qty: '1*5,300', sub: '5,300 零稅' }
+          { code: 'F04', name: '限量機械腕錶（外交免稅）', qty: '1*5,300', sub: '5,300 TZ' }
         ],
         taxBreakdown: [
           { label: '零稅率銷售額:', val: '5,300' },
@@ -628,11 +749,59 @@
       });
       document.getElementById('progress-text').textContent = `${checked} / ${total}`;
       document.getElementById('progress-bar').style.width = `${(checked / total) * 100}%`;
+
+      const banner = document.getElementById('complete-banner');
+      if (checked === total) {
+        banner.classList.remove('hidden');
+      } else {
+        banner.classList.add('hidden');
+      }
     }
 
     function resetChecklist() {
       document.querySelectorAll('.chk-item').forEach(cb => cb.checked = false);
       updateProgress();
+    }
+
+    // 開啟正式簽核檢核表
+    function openSignoffModal() {
+      const now = new Date();
+      const ts = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      document.getElementById('report-timestamp').textContent = ts;
+
+      const labels = document.querySelectorAll('#main-workspace label.flex');
+      const tbody = document.getElementById('report-table-body');
+      tbody.innerHTML = Array.from(labels).map((lbl, idx) => {
+        // 取得標題純文字（排除紅色圓形數字徽章）
+        const titleDiv = lbl.querySelector('.font-semibold');
+        const clone = titleDiv.cloneNode(true);
+        const badge = clone.querySelector('span');
+        if (badge) badge.remove();
+        const titleText = clone.textContent.trim();
+
+        return `
+          <tr>
+            <td class="border border-slate-400 px-2.5 py-1.5 text-center mono font-bold">${idx + 1}</td>
+            <td class="border border-slate-400 px-3 py-1.5 text-slate-800">${titleText}</td>
+            <td class="border border-slate-400 px-2.5 py-1.5 text-center font-bold text-emerald-700">☑ 通過</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('signoff-modal').classList.remove('hidden');
+    }
+
+    function closeSignoffModal() {
+      document.getElementById('signoff-modal').classList.add('hidden');
+      document.body.classList.remove('printing-report');
+    }
+
+    function printSignoffSheet() {
+      document.body.classList.add('printing-report');
+      window.print();
+      setTimeout(() => {
+        document.body.classList.remove('printing-report');
+      }, 500);
     }
 
     // 初始化
