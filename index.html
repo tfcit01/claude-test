@@ -380,7 +380,7 @@ a{color:var(--sage);font-size:11px}
       <input class="f-input" id="copy-date" type="date" />
     </div>
     <div class="f-group" style="margin-bottom:12px">
-      <label class="f-label">測試人員 <span style="color:var(--rust)">＊必填</span></label>
+      <label class="f-label">建立人員 <span style="color:var(--rust)">＊必填</span></label>
       <select class="f-select" id="copy-tester"></select>
     </div>
     <div style="font-size:12px;color:var(--muted)">將建立：<span id="copy-name-preview">（請先勾選類型）</span></div>
@@ -421,7 +421,7 @@ a{color:var(--sage);font-size:11px}
         <input class="f-input" id="std-date" type="date" />
       </div>
       <div class="f-group" style="margin-bottom:12px">
-        <label class="f-label">測試人員 <span style="color:var(--rust)">＊必填</span></label>
+        <label class="f-label">建立人員 <span style="color:var(--rust)">＊必填</span></label>
         <select class="f-select" id="std-tester"></select>
       </div>
       <div class="f-group" style="margin-bottom:12px">
@@ -533,6 +533,7 @@ let backupTimer=null;
 let sampleSaveTimers={};
 const openSampleIds=new Set();
 const openHistoryIds=new Set();
+const openNoteIds=new Set();
 let copySourceId=null;
 
 let MEMBERS=['Daniel','JiaJie','Sam','Kai','Luna'];
@@ -1213,7 +1214,7 @@ function createStandardSample(){
   const tester=document.getElementById('std-tester').value;
   const stdType=document.getElementById('std-type').value;
   if(!date){showToast('請選擇日期','err');return;}
-  if(!tester){showToast('請選擇測試人員','err');return;}
+  if(!tester){showToast('請選擇建立人員','err');return;}
   if(!stdType){showToast('請選擇類型','err');return;}
   db.collection('samples').add({
     name:stdType+'_標準版',type:'custom',standard:true,
@@ -1251,7 +1252,7 @@ function copyStandardSample(){
   const tester=document.getElementById('copy-tester').value;
   if(!types.length){showToast('請至少勾選一個類型','err');return;}
   if(!date){showToast('請選擇日期','err');return;}
-  if(!tester){showToast('請選擇測試人員','err');return;}
+  if(!tester){showToast('請選擇建立人員','err');return;}
   Promise.all(types.map(t=>db.collection('samples').add({
     name:t+'_標準版',type:'custom',standard:true,
     stdDate:date,stdTester:tester,stdType:t,
@@ -1411,9 +1412,16 @@ function renderActivityPreview(sampleId,value){
     +table.map((row,ri)=>`<tr>${row.map(cell=>`<${ri===0?'th':'td'}>${cell}</${ri===0?'th':'td'}>`).join('')}</tr>`).join('')
     +'</table>';
 }
+function toggleActivityNote(id){
+  if(openNoteIds.has(id))openNoteIds.delete(id);else openNoteIds.add(id);
+  const el=document.getElementById(`samp-${id}-activityWrap`);
+  if(el)el.style.display=openNoteIds.has(id)?'block':'none';
+}
 function updateSampleActivityNote(sampleId,value){
   const s=samples.find(s=>s.id===sampleId);if(!s)return;
   s.activityNote=value;
+  const btn=document.getElementById(`samp-${sampleId}-activityBtn`);
+  if(btn)btn.textContent='📝 活動說明'+(value.trim()?'（已填寫）':'');
   renderActivityPreview(sampleId,value);
   clearTimeout(sampleSaveTimers[sampleId+'-note']);
   sampleSaveTimers[sampleId+'-note']=setTimeout(()=>{
@@ -1523,7 +1531,7 @@ function renderSamples(){
             <button class="cred-edit-btn" style="font-size:12px" title="修改名稱" onclick="event.stopPropagation();renameSample('${s.id}')">✎</button>
             <span class="sample-badge ${s.standard?'standard':s.type}">${s.standard?'標準版':(s.type==='custom'?'自訂樣本':'隨機樣本')}</span>
           </div>
-          <div class="sample-meta">共 ${(s.rows||[]).length} 筆交易${s.standard?'　類型：'+s.stdType+'　日期：'+s.stdDate+'　測試人員：'+s.stdTester:''}${createdLabel?'　建立於 '+createdLabel:''}</div>
+          <div class="sample-meta">共 ${(s.rows||[]).length} 筆交易${s.standard?'　類型：'+s.stdType+'　日期：'+s.stdDate+'　建立人員：'+s.stdTester:''}${createdLabel?'　建立於 '+createdLabel:''}</div>
         </div>
         <div class="sample-actions" onclick="event.stopPropagation()">
           ${s.standard?`<button class="btn btn-outline" onclick="openCopySampleModal('${s.id}')">⧉ 複製</button>`:''}
@@ -1533,10 +1541,12 @@ function renderSamples(){
       </div>
       <div class="sample-detail">
         ${s.standard?`<label style="display:flex;align-items:center;gap:6px;font-size:13px;margin-bottom:12px;cursor:pointer"><input type="checkbox" ${s.printCreds?'checked':''} onchange="setSamplePrintCreds('${s.id}',this.checked)">列印時附上支付帳密</label>`:''}
-        <div class="f-group" style="margin-bottom:14px">
-          <label class="f-label">活動說明</label>
+        <div style="margin-bottom:14px">
+          <button class="btn btn-outline" id="samp-${s.id}-activityBtn" onclick="toggleActivityNote('${s.id}')">📝 活動說明${s.activityNote&&s.activityNote.trim()?'（已填寫）':''}</button>
+          <div id="samp-${s.id}-activityWrap" style="display:${openNoteIds.has(s.id)?'block':'none'};margin-top:8px">
           <textarea class="edit-input" id="samp-${s.id}-activityNote" rows="3" placeholder="選填，可輸入或貼上本次樣本對應的活動內容說明（貼上表格會自動偵測並轉為表格呈現）" style="resize:vertical;font-family:var(--sans);line-height:1.6" oninput="updateSampleActivityNote('${s.id}',this.value)">${s.activityNote||''}</textarea>
           <div id="samp-${s.id}-activityPreview" style="display:none;margin-top:8px"></div>
+          </div>
         </div>
         ${buildSampleTableHtml(s)}
       </div>
@@ -1704,7 +1714,7 @@ td.dash{background:#f5f3ef;color:#c5bfb8}
         <div class="meta-item"><span class="meta-label">狀態</span><span>${si.label}</span></div>
         ${(t.purpose||t.notes)?`<div class="meta-item"><span class="meta-label">測試目的</span><span>${t.purpose||t.notes}</span></div>`:''}
         <div class="meta-item"><span class="meta-label">樣本</span><span>${sample.name}（${sampleKindLabel(sample.type,sample.standard)}）</span></div>
-        ${sample.standard?`<div class="meta-item"><span class="meta-label">樣本日期</span><span>${sample.stdDate}</span></div><div class="meta-item"><span class="meta-label">樣本測試人員</span><span>${sample.stdTester}</span></div>`:''}
+        ${sample.standard?`<div class="meta-item"><span class="meta-label">樣本日期</span><span>${sample.stdDate}</span></div><div class="meta-item"><span class="meta-label">樣本建立人員</span><span>${sample.stdTester}</span></div>`:''}
       </div>
     </div>
   </div>
