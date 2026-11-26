@@ -529,15 +529,7 @@
       <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
         <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-slate-200">
           <div>
-            <div class="flex flex-wrap items-center gap-2">
-              <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-0.5 rounded-full">整合廠商檢核範例 + 客製驗收項</span>
-              <h2 class="text-base sm:text-lg font-bold text-slate-900">POS 交易測試執行檢核表（共 30 項）</h2>
-            </div>
-            <p class="text-xs text-slate-500 mt-1">
-              已依需求：<span class="text-slate-700 font-semibold">① 移除混合稅別銷售</span>、
-              <span class="text-indigo-700 font-semibold">② 新增外交官＋機關統編交叉驗證</span>、
-              <span class="text-rose-700 font-semibold">③ 強化全額專商禮券「未印出發票證明聯」實體驗證</span>。
-            </p>
+            <h2 class="text-base sm:text-lg font-bold text-slate-900">POS 交易測試執行檢核表（共 30 項）</h2>
           </div>
 
           <div class="flex flex-wrap items-center gap-2 no-print">
@@ -572,10 +564,10 @@
               ★ 全額專商禮券免開發票 (3)
             </button>
             <button type="button" onclick="filterCases('CARRIER')" data-filter="CARRIER" class="case-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
-              載具/捐贈/卡控 (7)
+              載具/捐贈/卡控 (6)
             </button>
             <button type="button" onclick="filterCases('REFUND_CLOSE')" data-filter="REFUND_CLOSE" class="case-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
-              退貨/清機結帳 (7)
+              退貨/清機結帳 (8)
             </button>
           </div>
 
@@ -974,7 +966,7 @@
         type: '統編',
         cats: ['TAXABLE', 'VOUCHER_NO_INV'],
         scenario: '應稅銷售，全應稅商品 ＋ 已開支付\n商品 1000 元，全額專商禮券 1000 元',
-        expected: '【實體出紙必檢】全額已開支付（未開發票），機器「不得印出電子發票證明聯」亦不可耗用字軌，僅印出銷貨明細表。',
+        expected: '【必檢】全額已開支付（未開發票），機器「不得印出電子發票證明聯」亦不可耗用字軌，僅印出銷貨明細表。',
         highlight: 'voucher'
       },
       {
@@ -998,7 +990,7 @@
         type: '外交官',
         cats: ['TAXABLE', 'VOUCHER_NO_INV'],
         scenario: '應稅商品轉零稅率（外交官）＋ 已開支付\n商品 1000 元，全額專商禮券 1000 元',
-        expected: '【實體出紙必檢】全額專商禮券結帳（未開發票），確認「未印出電子發票證明聯」，僅出銷貨明細表。',
+        expected: '【必檢】全額專商禮券結帳（未開發票），確認「未印出電子發票證明聯」，僅出銷貨明細表。',
         highlight: 'voucher'
       },
       {
@@ -1030,7 +1022,7 @@
         type: '統編',
         cats: ['EXEMPT', 'VOUCHER_NO_INV'],
         scenario: '免稅銷售，全免稅商品 ＋ 已開支付\n商品 1000 元，全額專商禮券 1000 元',
-        expected: '【實體出紙必檢】全額專商禮券結帳（未開發票），確認「未印出電子發票證明聯」，僅出銷貨明細表。',
+        expected: '【必檢】全額專商禮券結帳（未開發票），確認「未印出電子發票證明聯」，僅出銷貨明細表。',
         highlight: 'voucher'
       },
       {
@@ -1054,14 +1046,14 @@
         type: '外交官',
         cats: ['EXEMPT'],
         scenario: '免稅銷售（外交官）＋ 已開支付\n商品 1000 元，全額專商禮券 1000 元',
-        expected: '【實體出紙必檢】全額專商禮券（未開發票），確認「未印出電子發票證明聯」，僅出銷貨明細表。',
+        expected: '【必檢】全額專商禮券（未開發票），確認「未印出電子發票證明聯」，僅出銷貨明細表。',
         highlight: 'voucher'
       },
       {
         seq: '015',
         type: '外交官＋統編',
         cats: ['ZERO_TAXID'],
-        scenario: '【新增交叉驗證】零稅率（外交官）＋ 有統編 / 機關統一編號\n商品 1000 元，輸入外交機關統編（8碼），刷卡 1000 元',
+        scenario: '零稅率（外交官）＋ 有統編 / 機關統一編號\n商品 1000 元，輸入外交機關統編（8碼），刷卡 1000 元',
         expected: '1. 證明聯須清楚印出「買方: 機關統編」且與明細連印。\n2. 稅額必須為 0（零稅率銷售額 1000、稅別 TZ），嚴禁系統誤拆出 5% 稅額！',
         highlight: 'zero_taxid'
       },
@@ -1069,7 +1061,7 @@
         seq: '016',
         type: '外交官＋統編',
         cats: ['ZERO_TAXID'],
-        scenario: '【新增交叉驗證】零稅率（外交官）＋ 機關統一編號（異常格式與退貨）\n測試輸入錯誤機關統編阻擋；並測試 015 筆之整筆退貨作廢',
+        scenario: '零稅率（外交官）＋ 機關統一編號（異常格式與退貨）\n測試輸入錯誤機關統編阻擋；並測試 015 筆之整筆退貨作廢',
         expected: '1. 機關統編仍須經過 8 碼邏輯檢核機制。\n2. 退貨時原零稅率＋統編發票正常作廢，稅額 0 沖銷無誤。',
         highlight: 'zero_taxid'
       },
@@ -1083,14 +1075,6 @@
       },
       {
         seq: '018',
-        type: '自然人憑證',
-        cats: ['CARRIER'],
-        scenario: '銷售 1500 元，打自然人憑證條碼（2碼大寫英文+14碼數字）\n商品 1500 元，現金 1500 元\n【必測】請確認程式須有自然人憑證條碼格式檢查機制',
-        expected: '1. 錯誤格式（長度非 16 碼或前 2 碼非大寫英文）須阻擋。\n2. 存入載具成功時不印出證明聯，僅印交易明細。',
-        highlight: 'format'
-      },
-      {
-        seq: '019',
         type: '捐贈碼',
         cats: ['CARRIER'],
         scenario: '銷售 1500 元，打捐贈碼（3~7 碼數字）\n商品 1500 元，現金 1500 元\n【必測】請確認程式須有捐贈碼格式檢查機制',
@@ -1098,7 +1082,7 @@
         highlight: 'format'
       },
       {
-        seq: '020',
+        seq: '019',
         type: '卡控',
         cats: ['CARRIER'],
         scenario: '銷售，有統編 ＋ 捐贈碼（或共通性載具）\n應不可進行交易',
@@ -1106,7 +1090,7 @@
         highlight: 'format'
       },
       {
-        seq: '021',
+        seq: '020',
         type: '悠遊卡載具',
         cats: ['CARRIER'],
         scenario: '銷售 1 元，打悠遊卡載具（悠遊卡感應扣款或隱碼載具）',
@@ -1114,7 +1098,7 @@
         highlight: ''
       },
       {
-        seq: '022',
+        seq: '021',
         type: '信用卡載具',
         cats: ['CARRIER'],
         scenario: '銷售 1500 元\n商品 1500 元，聯信刷卡 1500 元（信用卡存載具）',
@@ -1122,7 +1106,7 @@
         highlight: ''
       },
       {
-        seq: '023',
+        seq: '022',
         type: '會員載具',
         cats: ['CARRIER'],
         scenario: '銷售 1500 元\n商品 1500 元，聯信刷卡 1500 元，刷 TAIPEI 101 會員卡存載具',
@@ -1130,7 +1114,7 @@
         highlight: ''
       },
       {
-        seq: '024',
+        seq: '023',
         type: '退貨',
         cats: ['REFUND_CLOSE'],
         scenario: '退掉序 002（應稅＋有統編發票）',
@@ -1138,7 +1122,7 @@
         highlight: ''
       },
       {
-        seq: '025',
+        seq: '024',
         type: '退貨',
         cats: ['REFUND_CLOSE'],
         scenario: '退掉序 003（應稅＋統編＋刷卡 700 ＋ 專商禮券 300）',
@@ -1146,7 +1130,7 @@
         highlight: ''
       },
       {
-        seq: '026',
+        seq: '025',
         type: '退貨',
         cats: ['REFUND_CLOSE'],
         scenario: '退掉序 006（外交官零稅率＋刷卡 700 ＋ 專商禮券 300）',
@@ -1154,7 +1138,7 @@
         highlight: ''
       },
       {
-        seq: '027',
+        seq: '026',
         type: '退貨',
         cats: ['REFUND_CLOSE'],
         scenario: '退掉序 009（免稅＋有統編發票）',
@@ -1162,7 +1146,7 @@
         highlight: ''
       },
       {
-        seq: '028',
+        seq: '027',
         type: '退貨',
         cats: ['REFUND_CLOSE'],
         scenario: '退掉序 014（免稅＋外交官＋全額專商禮券 1000 元未開發票交易）',
@@ -1170,11 +1154,19 @@
         highlight: 'voucher'
       },
       {
+        seq: '028',
+        type: '跨期退貨',
+        cats: ['REFUND_CLOSE'],
+        scenario: '作廢前期發票（跨期退貨）\n針對已跨雙月期別之歷史發票執行退貨操作',
+        expected: '【必檢】跨期不可直接作廢，系統須正確產生「營業人銷貨退回進貨退出或折讓證明單」，折讓單號、原發票字軌與稅額拆算無誤。',
+        highlight: 'format'
+      },
+      {
         seq: '029',
         type: '日結清機',
         cats: ['REFUND_CLOSE'],
         scenario: '結帳，清機條確認（核對所有測試交易彙總）',
-        expected: '清機條之「應稅、免稅、零稅率、已開專商禮券（不計入發票開立總額）、作廢張數／金額」與實體單據完全吻合。',
+        expected: '清機條之「應稅、免稅、零稅率、已開專商禮券（不計入發票開立總額）、作廢／折讓張數與金額」與實體單據完全吻合。',
         highlight: ''
       },
       {
@@ -1182,7 +1174,7 @@
         type: '上傳核對',
         cats: ['REFUND_CLOSE'],
         scenario: 'POS 後台與財政部大平台電子發票上傳狀態檢核',
-        expected: '確認未開發票交易（004、007、011、014）無異常上傳；外交官＋統編（015）稅別與買方統編上傳無誤。',
+        expected: '確認未開發票交易（004、007、011、014）無異常上傳；外交官＋統編（015）及跨期折讓單（028）上傳無誤。',
         highlight: ''
       }
     ];
@@ -1229,7 +1221,7 @@
         // 格式化多行文字並凸顯紅字/關鍵提示
         const formatLines = (text) => {
           return text.split('\n').map(line => {
-            if (line.includes('【必測】') || line.includes('【實體出紙必檢】') || line.includes('【新增交叉驗證】')) {
+            if (line.includes('【必測】') || line.includes('【必檢】')) {
               return `<div class="text-rose-700 font-bold mt-0.5">${line}</div>`;
             }
             return `<div>${line}</div>`;
