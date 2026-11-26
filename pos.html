@@ -74,17 +74,31 @@
       <div>
         <div class="flex items-center gap-2">
           <span class="bg-amber-500 text-slate-950 text-xs font-bold px-2.5 py-0.5 rounded-full">QA 驗收工具</span>
-          <h1 class="text-lg sm:text-xl font-bold tracking-tight">POS 程式更版：發票格式與數字快速人工核對圖鑑</h1>
+          <h1 class="text-lg sm:text-xl font-bold tracking-tight">POS 程式更版：發票格式與交易測試執行系統</h1>
         </div>
-        <p class="text-slate-400 text-xs sm:text-sm mt-0.5">將實體印出的測試發票與下方「標準圖樣」並排比對，並逐項勾選右側查核表</p>
+        <p class="text-slate-400 text-xs sm:text-sm mt-0.5">整合「發票版面人工圖鑑」與「廠商交易測試執行表（含外交官統編、專商禮券免開發票驗證）」</p>
       </div>
       <div class="flex items-center gap-2">
-        <button onclick="resetChecklist()" class="px-3 py-2 text-xs sm:text-sm bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition">
-          重置勾選
+        <button type="button" onclick="resetCurrentTab()" class="px-3 py-2 text-xs sm:text-sm bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg border border-slate-700 transition">
+          重置本頁勾選
         </button>
-        <button onclick="window.print()" class="px-3.5 py-2 text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg shadow transition flex items-center gap-1.5">
+        <button type="button" onclick="window.print()" class="px-3.5 py-2 text-xs sm:text-sm bg-emerald-600 hover:bg-emerald-500 text-white font-medium rounded-lg shadow transition flex items-center gap-1.5">
           <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
           列印 / 存成 PDF
+        </button>
+      </div>
+    </div>
+
+    <!-- 頁籤導覽列 (Tab Navigation) -->
+    <div class="bg-slate-800/90 border-t border-slate-700/80">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex gap-2 pt-2">
+        <button type="button" id="tab-btn-visual" onclick="switchTab('visual')" class="px-4 py-2.5 text-xs sm:text-sm font-bold rounded-t-xl bg-slate-100 text-slate-900 border-t-2 border-indigo-500 transition flex items-center gap-2">
+          <span>頁籤一：發票版面格式與 12 項人工檢核</span>
+          <span id="tab-badge-visual" class="bg-indigo-600 text-white text-[11px] px-2 py-0.5 rounded-full mono">0/12</span>
+        </button>
+        <button type="button" id="tab-btn-cases" onclick="switchTab('cases')" class="px-4 py-2.5 text-xs sm:text-sm font-bold rounded-t-xl bg-slate-700/70 text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-2">
+          <span>頁籤二：交易測試執行表（30 項整合驗證）</span>
+          <span id="tab-badge-cases" class="bg-amber-500 text-slate-950 text-[11px] px-2 py-0.5 rounded-full mono">0/30</span>
         </button>
       </div>
     </div>
@@ -93,427 +107,524 @@
   <!-- 主內容區 -->
   <main id="main-workspace" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
 
-    <!-- 情境切換與快速算式驗證器 -->
-    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 mb-6 no-print">
-      <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div class="w-full lg:max-w-xl">
-          <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600">步驟 1：切換標準發票參考模式</span>
-          <div class="flex flex-col gap-2 mt-2">
-            <button id="btn-b2c" onclick="setMode('b2c')" class="w-full text-left px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white shadow-sm transition">
-              模式 A：一般無統編發票（含應稅＋免稅混合）
-            </button>
-            <button id="btn-b2b" onclick="setMode('b2b')" class="w-full text-left px-4 py-2 rounded-xl text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
-              模式 B：有統編發票（需強制印出明細＋稅額拆分）
-            </button>
-            <button id="btn-zero" onclick="setMode('zero')" class="w-full text-left px-4 py-2 rounded-xl text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
-              模式 C：零稅率（外交官／外銷專櫃）
-            </button>
+    <!-- ===================================================================== -->
+    <!-- 頁籤一：原本 pos.html 完整內容（發票格式圖鑑 + 12 項基本檢核）         -->
+    <!-- ===================================================================== -->
+    <div id="tab-panel-visual" class="block">
+      <!-- 情境切換與快速算式驗證器 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 mb-6 no-print">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div class="w-full lg:max-w-xl">
+            <span class="text-xs font-semibold uppercase tracking-wider text-indigo-600">步驟 1：切換標準發票參考模式</span>
+            <div class="flex flex-col gap-2 mt-2">
+              <button type="button" id="btn-b2c" onclick="setMode('b2c')" class="w-full text-left px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white shadow-sm transition">
+                模式 A：一般無統編發票（純應稅商品）
+              </button>
+              <button type="button" id="btn-b2b" onclick="setMode('b2b')" class="w-full text-left px-4 py-2 rounded-xl text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                模式 B：有統編發票（需強制印出明細＋稅額拆分）
+              </button>
+              <button type="button" id="btn-zero" onclick="setMode('zero')" class="w-full text-left px-4 py-2 rounded-xl text-sm font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+                模式 C：零稅率（外交官／外銷專櫃，含統編交叉驗證）
+              </button>
+            </div>
+          </div>
+
+          <!-- 稅額速算小工具 -->
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-wrap items-center gap-3">
+            <div class="text-xs text-slate-600">
+              <div class="font-bold text-slate-800">5% 稅額快速反推器</div>
+              <div>輸入含稅總額自動驗算</div>
+            </div>
+            <div class="flex items-center gap-1.5">
+              <span class="text-sm font-medium text-slate-500">$</span>
+              <input id="calc-input" type="number" value="100" oninput="calcTax()" class="w-24 px-2.5 py-1.5 text-sm mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </div>
+            <div class="text-xs mono bg-white px-3 py-1.5 rounded-lg border border-slate-200">
+              銷售額: <span id="calc-sales" class="font-bold text-indigo-600">95</span> ｜
+              稅額: <span id="calc-tax" class="font-bold text-rose-600">5</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 雙欄主視覺：左側實體二聯發票圖樣 (窄欄 4 欄) + 右側核對清單 (寬欄 8 欄) -->
+      <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+
+        <!-- 左側：視覺化實體二聯發票圖樣 (佔 4 欄) -->
+        <div class="xl:col-span-4 flex flex-col items-center">
+          <div class="w-full bg-slate-200/80 p-3.5 sm:p-4 rounded-2xl border border-slate-300 shadow-inner">
+            <div class="flex flex-col gap-1.5 mb-3">
+              <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shrink-0"></span>
+                實體二聯發票標準樣張（電子發票證明聯 ＋ 銷貨明細表）
+              </span>
+              <span id="mode-tag" class="self-start text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">一般無統編</span>
+            </div>
+
+            <!-- 上下直向排列容器 -->
+            <div id="receipt-wrapper" class="flex flex-col gap-3.5 items-center select-none max-w-[300px] mx-auto w-full transition-all">
+
+              <!-- ================= 上聯：電子發票證明聯 ================= -->
+              <div id="upper-slip" class="w-full thermal-pink rounded-sm px-3.5 py-4 text-neutral-900 relative border border-[#d97e6c]/60">
+                <!-- 標註 1：品牌與期別 -->
+                <div class="relative text-center">
+                  <span class="callout-badge absolute -left-2 -top-1 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查電子發票證明聯抬頭與雙月期別">1</span>
+                  <div class="text-xl brand-101 tracking-widest">TAIPEI 101</div>
+                  <div class="text-[19px] font-extrabold tracking-wider mt-0.5 leading-tight">電子發票證明聯</div>
+                  <div class="text-[21px] font-extrabold tracking-wider leading-tight">115年11-12月</div>
+                </div>
+
+                <!-- 標註 2：發票字軌號碼 -->
+                <div class="relative text-center my-1">
+                  <span class="callout-badge absolute -left-2 top-1 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查發票字軌號碼">2</span>
+                  <div id="right-inv-no" class="text-[22px] font-extrabold mono tracking-tight">NE-58207426</div>
+                </div>
+
+                <!-- 標註 3：交易時間、隨機碼、總計、賣方/買方統編 -->
+                <div class="relative text-[11.5px] leading-snug space-y-0.5 mt-1">
+                  <span class="callout-badge absolute -left-2 top-1 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查隨機碼、總計金額與買賣方統編">3</span>
+                  <div class="mono">2026-11-23 17:05:39</div>
+                  <div class="flex justify-between items-baseline">
+                    <span>隨機碼:<strong class="mono">9686</strong></span>
+                    <span class="font-bold">總計:<strong id="right-total" class="mono text-sm">100</strong></span>
+                  </div>
+                  <div class="flex justify-between items-center mono">
+                    <span>賣方:16095410</span>
+                    <span id="right-buyer-taxid" class="hidden font-extrabold bg-white/60 px-1.5 py-0.2 rounded text-rose-800">買方:87654321</span>
+                  </div>
+                </div>
+
+                <!-- 標註 4：一維條碼與雙 QR Code -->
+                <div class="relative my-2.5">
+                  <span class="callout-badge absolute -left-2 top-2 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查一維條碼與左右QR Code是否完整可掃">4</span>
+                  <!-- Code39 一維條碼 -->
+                  <div class="w-11/12 mx-auto h-8 flex items-stretch justify-between gap-[1px]">
+                    <div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1.5"></div>
+                    <div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-2"></div>
+                    <div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div>
+                    <div class="bg-neutral-900 w-1.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div>
+                    <div class="bg-neutral-900 w-2"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div>
+                    <div class="bg-neutral-900 w-1.5"></div><div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1"></div>
+                    <div class="bg-neutral-900 w-1.5"></div><div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1"></div>
+                    <div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1.5"></div>
+                  </div>
+
+                  <!-- 左右兩個 QR Code -->
+                  <div class="flex justify-between items-center mt-2.5 px-2 gap-3">
+                    <div class="w-[74px] h-[74px] border-[1.5px] border-neutral-900 p-1 grid grid-cols-5 grid-rows-5 gap-0.5 bg-transparent">
+                      <div class="bg-neutral-900 col-span-2 row-span-2"></div>
+                      <div class="bg-neutral-900"></div><div></div><div class="bg-neutral-900"></div>
+                      <div></div><div class="bg-neutral-900"></div><div class="bg-neutral-900"></div>
+                      <div class="bg-neutral-900"></div><div class="bg-neutral-900 col-span-2"></div><div></div><div class="bg-neutral-900"></div>
+                      <div class="bg-neutral-900 col-span-2 row-span-2"></div>
+                      <div class="bg-neutral-900"></div><div class="bg-neutral-900"></div><div></div>
+                      <div class="bg-neutral-900"></div><div></div><div class="bg-neutral-900"></div>
+                    </div>
+                    <div class="w-[74px] h-[74px] border-[1.5px] border-neutral-900 p-1 grid grid-cols-5 grid-rows-5 gap-0.5 bg-transparent">
+                      <div></div><div class="bg-neutral-900"></div><div class="bg-neutral-900"></div><div class="bg-neutral-900 col-span-2 row-span-2"></div>
+                      <div class="bg-neutral-900"></div><div class="bg-neutral-900"></div><div></div>
+                      <div class="bg-neutral-900 col-span-2"></div><div class="bg-neutral-900"></div><div></div><div class="bg-neutral-900"></div>
+                      <div class="bg-neutral-900"></div><div></div><div class="bg-neutral-900"></div><div class="bg-neutral-900"></div><div></div>
+                      <div></div><div class="bg-neutral-900"></div><div class="bg-neutral-900"></div><div></div><div class="bg-neutral-900"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 底部退換貨提示與機台序號 -->
+                <div id="upper-footer" class="text-center text-[10.5px] leading-snug pt-1">
+                  <div>商品退換請持本聯及銷貨明細單</div>
+                  <div class="mono font-medium tracking-tight mt-0.5">B0527-L32813-000003 20261123</div>
+                </div>
+
+                <!-- 模式 B/C 專用：連印不可切斷提示線 -->
+                <div id="b2b-continuous-divider" class="hidden mt-3 pt-2 border-t-2 border-dashed border-rose-800/70 text-center">
+                  <span id="continuous-divider-text" class="inline-block bg-rose-700 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
+                    ▼ 統編發票須與明細連印（不可裁切分開）▼
+                  </span>
+                </div>
+              </div>
+
+              <!-- ================= 下聯：銷貨明細表 ================= -->
+              <div id="lower-slip" class="w-full thermal-pink rounded-sm px-3.5 py-4 text-[11px] leading-[1.38] relative border border-[#d97e6c]/60">
+                <!-- 標註 1：品牌抬頭與營業人基本資料 -->
+                <div class="relative text-center pb-1.5">
+                  <span class="callout-badge absolute -left-2 -top-1 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查抬頭、統編、地址與機台資訊">1</span>
+                  <div class="text-xl brand-101 tracking-widest text-neutral-900">TAIPEI 101</div>
+                  <div class="text-sm font-bold tracking-[0.28em] mt-0.5">銷 貨 明 細 表</div>
+                </div>
+
+                <div class="space-y-0.5 text-[10.5px] text-neutral-900/95">
+                  <div>營業人統編：<span class="mono">16095410</span></div>
+                  <div>台北金融大樓股份有限公司</div>
+                  <div>台北市信義區市府路45號</div>
+                  <div>B1~5F、B1之一、4F之一及6F之一、</div>
+                  <div>台北市信義區信義路五段7號</div>
+                  <div>59~60樓、89樓、101樓</div>
+                  <div>電話：<span class="mono">02-81018800</span></div>
+                  <div>入帳日期：<span class="mono">2026/11/23</span></div>
+                  <div>列印日期：<span class="mono">2026/11/23 17:05</span></div>
+                  <div class="mono">機號:L32813 序:000003收銀:66666666</div>
+                  <div>櫃號:<span class="mono">B0527</span> 櫃名:蕭邦錶</div>
+                  <div>發票號碼：<span id="left-inv-no" class="mono font-bold">NE58207426</span></div>
+                  <div class="pt-0.5 text-[10px] leading-tight">
+                    贈品兌換請持本聯及發票證明聯至B1客服中心辦理;退貨請持本聯及發票證明辦理
+                  </div>
+                </div>
+
+                <!-- 標註 5：銷貨明細商品與稅別記號 -->
+                <div class="relative mt-2.5 pt-2 border-t border-neutral-900/25">
+                  <span class="callout-badge absolute -left-2 top-2 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查商品明細、單價數量小計與稅記號">5</span>
+                  <div id="left-items" class="space-y-1.5 mono text-[11px]">
+                    <!-- 動態填入明細 -->
+                  </div>
+                </div>
+
+                <!-- 標註 6：小計、稅額彙總、刷卡授權與購買總數量 -->
+                <div class="relative mt-2 pt-1.5 border-t border-neutral-900/25 mono text-[11px] space-y-0.5">
+                  <span class="callout-badge absolute -left-2 top-1.5 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查稅額拆分、付款授權與總數量">6</span>
+                  <div class="flex justify-between font-bold">
+                    <span>小計</span>
+                    <span id="left-subtotal">100</span>
+                  </div>
+                  <!-- 統編或零稅率時顯示明細稅額拆算 -->
+                  <div id="left-tax-breakdown" class="text-[10px] space-y-0.5 pt-0.5 text-neutral-900/90">
+                    <!-- 動態填入稅別拆算 -->
+                  </div>
+                  <div class="flex justify-between pt-0.5">
+                    <span id="left-pay-method">聯信-連 493817*******08</span>
+                    <span id="left-pay-amount">100</span>
+                  </div>
+                  <div>調閱編號:000001</div>
+                  <div>授權編號:010001</div>
+                  <div>購買總數量：<span id="left-qty-total">1件</span></div>
+                </div>
+
+                <!-- 標註 7：裁切虛線與底部發票金額＋條碼 -->
+                <div class="mt-2 pt-2 border-t border-dashed border-neutral-900/50 relative">
+                  <span class="callout-badge absolute -left-2 top-2 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查底部發票金額與櫃號條碼一致性">7</span>
+                  <div class="flex justify-between items-baseline font-bold text-xs">
+                    <span>發票金額</span>
+                    <span id="left-bottom-amount" class="mono text-sm">100</span>
+                  </div>
+                  <div class="flex items-end justify-between gap-2 mt-1">
+                    <span class="font-extrabold text-sm mono">B0527</span>
+                    <div class="flex-1">
+                      <div class="h-6 flex items-stretch justify-between gap-[1px]">
+                        <div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1.5"></div>
+                        <div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-1.5"></div>
+                        <div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div>
+                        <div class="bg-neutral-900 w-1.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div>
+                        <div class="bg-neutral-900 w-1.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div>
+                        <div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1.5"></div>
+                      </div>
+                      <div class="text-[9.5px] text-center mono tracking-tight">*11512NE582074269686*</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+
+            <p id="receipt-caption" class="text-[11px] text-slate-600 text-center mt-3 leading-relaxed">
+              對照說明：上聯為「電子發票證明聯」，下聯為「銷貨明細表（含品項、稅記號、刷卡授權）」，紅色數字 <strong>1 ～ 7</strong> 對應右側查核表
+            </p>
           </div>
         </div>
 
-        <!-- 稅額速算小工具 -->
-        <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-wrap items-center gap-3">
-          <div class="text-xs text-slate-600">
-            <div class="font-bold text-slate-800">5% 稅額快速反推器</div>
-            <div>輸入含稅總額自動驗算</div>
+        <!-- 右側：人員逐項核對清單 (佔 8 欄) -->
+        <div class="xl:col-span-8 space-y-4">
+
+          <!-- 進度條卡片 -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
+            <div class="flex items-center justify-between mb-2">
+              <div>
+                <h2 class="text-base sm:text-lg font-bold text-slate-900">版更基本人工查核表（共 12 項必檢點）</h2>
+                <p class="text-xs text-slate-500">每次 POS 廠商更新程式後，請至少印出「一般、統編、零稅率／免稅」各一張進行核對</p>
+              </div>
+              <div class="text-right">
+                <span id="progress-text" class="text-lg font-extrabold text-indigo-600 mono">0 / 12</span>
+                <div class="text-[11px] text-slate-400">已完成項目</div>
+              </div>
+            </div>
+            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div id="progress-bar" class="bg-indigo-600 h-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+
+            <!-- 12 項全勾選完成後的簽核單產出橫幅 -->
+            <div id="complete-banner" class="hidden mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-all">
+              <div class="flex items-center gap-2.5">
+                <span class="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0">✓</span>
+                <div>
+                  <div class="text-sm font-bold text-emerald-900">12 項基本檢核已全數通過！</div>
+                  <div class="text-xs text-emerald-700">可立即產出正式版更驗收簽核單，供列印與人員／主管簽名存檔</div>
+                </div>
+              </div>
+              <button type="button" onclick="openSignoffModal('visual')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-lg shadow-sm transition shrink-0 flex items-center justify-center gap-1.5">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                產出正式簽名檢核表
+              </button>
+            </div>
           </div>
-          <div class="flex items-center gap-1.5">
-            <span class="text-sm font-medium text-slate-500">$</span>
-            <input id="calc-input" type="number" value="100" oninput="calcTax()" class="w-24 px-2.5 py-1.5 text-sm mono font-bold bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+
+          <!-- 區塊一：版面與格式檢查 (對應 ① ~ ④) -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+              <h3 class="font-bold text-slate-800 text-sm sm:text-base">A. 發票版面與法定欄位格式檢查（對照圖示 ①～④）</h3>
+              <span class="text-xs font-medium text-slate-500">防跑版 / 裁切 / 漏印</span>
+            </div>
+            <div class="divide-y divide-slate-100">
+              <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
+                <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
+                <div class="flex-1 text-sm">
+                  <div class="font-semibold text-slate-800 flex items-center gap-2">
+                    <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">1</span>
+                    期別與抬頭正確，無亂碼或字體過大被截斷
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">確認「電子發票證明聯」字樣完整，民國年與雙月期別（如 115年11-12月）與實際交易日期相符。</p>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
+                <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
+                <div class="flex-1 text-sm">
+                  <div class="font-semibold text-slate-800 flex items-center gap-2">
+                    <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">2</span>
+                    發票字軌號碼為「2碼大寫英文 + 8碼數字」
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">確認未出現測試字軌（如 XX-00000000）、未跳號、未重複開立同一組號碼。</p>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
+                <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
+                <div class="flex-1 text-sm">
+                  <div class="font-semibold text-slate-800 flex items-center gap-2">
+                    <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">3</span>
+                    隨機碼 4 碼、賣方統編 8 碼、買方統編與「連印不裁切」正確
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">無統編時證明聯與明細分開印出且不印買方統編；<strong>有統編（含外交官機關統編）時必須清楚印出「買方: 8碼統編」，且證明聯與交易明細必須連在一起印出（切刀不可在中間切斷）</strong>。</p>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
+                <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
+                <div class="flex-1 text-sm">
+                  <div class="font-semibold text-slate-800 flex items-center gap-2">
+                    <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">4</span>
+                    一維條碼與左右兩個 QR Code 清晰且未被裁切
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">用手機掃碼器或財政部兌獎 App 實測掃描左右 QR Code，確認能正常讀取且邊緣無切刀切斷線條。</p>
+                </div>
+              </label>
+            </div>
           </div>
-          <div class="text-xs mono bg-white px-3 py-1.5 rounded-lg border border-slate-200">
-            銷售額: <span id="calc-sales" class="font-bold text-indigo-600">95</span> ｜
-            稅額: <span id="calc-tax" class="font-bold text-rose-600">5</span>
+
+          <!-- 區塊二：數字、稅別與金額驗算 (對應 ⑤ ~ ⑥) -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-amber-50 px-5 py-3 border-b border-amber-200 flex items-center justify-between">
+              <h3 class="font-bold text-amber-900 text-sm sm:text-base">B. 數字、稅別記號與稅額驗算（對照圖示 ⑤～⑥ ★核心必檢）</h3>
+              <span class="text-xs font-bold text-amber-700">最常改版出錯區</span>
+            </div>
+            <div class="divide-y divide-slate-100">
+              <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
+                <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
+                <div class="flex-1 text-sm">
+                  <div class="font-semibold text-slate-800 flex items-center gap-2">
+                    <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">5</span>
+                    明細「單價 × 數量 ＝ 小計」與折扣折讓逐行驗算無誤
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">特別檢查買一送一、第二件半價、滿額折扣、負數折讓行，確認折扣金額正確扣減，未出現多算或少算 1 元。</p>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
+                <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
+                <div class="flex-1 text-sm">
+                  <div class="font-semibold text-slate-800 flex items-center gap-2">
+                    <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">5</span>
+                    商品右側稅別記號正確（應稅 TX/TN、免稅不印或 EX、零稅 TZ）
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">應稅品項印出 <strong>TX / TN</strong>；免稅品項（黃金、農產品）通常<strong>留空不印</strong>（或依系統規範印 EX）；零稅率（外交官）印 <strong>TZ / 零稅</strong>（或依規範留空），嚴禁誤印為應稅 TX/TN。</p>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
+                <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
+                <div class="flex-1 text-sm">
+                  <div class="font-semibold text-slate-800 flex items-center gap-2">
+                    <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">6</span>
+                    有統編發票「銷售額 ＋ 稅額 ＝ 總計」四捨五入正確
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">驗算公式：<code class="bg-slate-100 px-1 rounded mono">銷售額 = Round(應稅含稅金額 ÷ 1.05)</code>，<code class="bg-slate-100 px-1 rounded mono">稅額 = 應稅含稅金額 - 銷售額</code>。確認兩者相加等於總計。</p>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
+                <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
+                <div class="flex-1 text-sm">
+                  <div class="font-semibold text-slate-800 flex items-center gap-2">
+                    <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">6</span>
+                    零稅率（外交官）＋ 機關統一編號時，稅額必須為 0 且不外加 5%
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">外交使領館或免稅機構持免稅證且輸入機關統編時，證明聯須印出買方統編，但營業稅額須為 <strong>0</strong>、稅別記號為 <strong>TZ / 零稅</strong>，不可被系統自動當成一般 B2B 拆算 5% 稅額。</p>
+                </div>
+              </label>
+            </div>
           </div>
+
+          <!-- 區塊三：異常與帳務一致性檢查 (對應 ⑦ 與後台) -->
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+              <h3 class="font-bold text-slate-800 text-sm sm:text-base">C. 付款方式、全額專商禮券免開發票與帳務一致性（對照圖示 ⑦）</h3>
+              <span class="text-xs font-medium text-slate-500">防漏帳 / 狀態不同步</span>
+            </div>
+            <div class="divide-y divide-slate-100">
+              <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
+                <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
+                <div class="flex-1 text-sm">
+                  <div class="font-semibold text-slate-800 flex items-center gap-2">
+                    <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">7</span>
+                    付款方式金額加總 ＝ 發票總計（含刷卡＋專商禮券拆分）
+                  </div>
+                  <p class="text-xs text-slate-500 mt-0.5">測試「刷卡 $700 ＋ 已開專商禮券 $300」部分折抵時，發票應開立餘額 $700，且底部付款明細加總與總計一致。</p>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
+                <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
+                <div class="flex-1 text-sm">
+                  <div class="font-semibold text-slate-800">「全額專商禮券（已開支付）」交易確實未印出電子發票證明聯</div>
+                  <p class="text-xs text-slate-500 mt-0.5">購買禮券時已開發票，故以全額專商禮券結帳時<strong>僅能印出銷貨明細表／交易憑證，嚴禁印出「電子發票證明聯」紙張，亦不得耗用發票字軌號碼</strong>。</p>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
+                <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
+                <div class="flex-1 text-sm">
+                  <div class="font-semibold text-slate-800">作廢 / 退貨折讓單可正常執行且金額正負號正確</div>
+                  <p class="text-xs text-slate-500 mt-0.5">更版後務必實測退貨（含部分專商禮券退貨、外交官退貨），確認能印出退貨憑證且原發票狀態同步作廢。</p>
+                </div>
+              </label>
+
+              <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
+                <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
+                <div class="flex-1 text-sm">
+                  <div class="font-semibold text-slate-800">紙本發票數字 ＝ POS 清機日結報表 ＝ 財政部平台上傳資料</div>
+                  <p class="text-xs text-slate-500 mt-0.5">最後一步比對紙本發票的「字軌、隨機碼、應稅/免稅/零稅率金額」與清機條及 POS 後台交易明細完全一致。</p>
+                </div>
+              </label>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
 
-    <!-- 雙欄主視覺：左側實體二聯發票圖樣 (窄欄 4 欄) + 右側核對清單 (寬欄 8 欄) -->
-    <div class="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
+    <!-- ===================================================================== -->
+    <!-- 頁籤二：廠商測試案例整合執行表（共 30 項可勾選、篩選、匯出 Excel CSV）  -->
+    <!-- ===================================================================== -->
+    <div id="tab-panel-cases" class="hidden space-y-5">
 
-      <!-- 左側：視覺化實體二聯發票圖樣 (佔 4 欄，寬度變窄) -->
-      <div class="xl:col-span-4 flex flex-col items-center">
-        <div class="w-full bg-slate-200/80 p-3.5 sm:p-4 rounded-2xl border border-slate-300 shadow-inner">
-          <div class="flex flex-col gap-1.5 mb-3">
-            <span class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
-              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shrink-0"></span>
-              實體二聯發票標準樣張（電子發票證明聯 ＋ 銷貨明細表）
-            </span>
-            <span id="mode-tag" class="self-start text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700">一般無統編</span>
+      <!-- 頂部控制與進度總覽卡片 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
+        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-slate-200">
+          <div>
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="bg-indigo-100 text-indigo-700 text-xs font-bold px-2.5 py-0.5 rounded-full">整合廠商檢核範例 + 客製驗收項</span>
+              <h2 class="text-base sm:text-lg font-bold text-slate-900">POS 交易測試執行檢核表（共 30 項）</h2>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">
+              已依需求：<span class="text-slate-700 font-semibold">① 移除混合稅別銷售</span>、
+              <span class="text-indigo-700 font-semibold">② 新增外交官＋機關統編交叉驗證</span>、
+              <span class="text-rose-700 font-semibold">③ 強化全額專商禮券「未印出發票證明聯」實體驗證</span>。
+            </p>
           </div>
 
-          <!-- 上下直向排列容器 -->
-          <div id="receipt-wrapper" class="flex flex-col gap-3.5 items-center select-none max-w-[300px] mx-auto w-full transition-all">
-
-            <!-- ================= 上聯：電子發票證明聯 ================= -->
-            <div id="upper-slip" class="w-full thermal-pink rounded-sm px-3.5 py-4 text-neutral-900 relative border border-[#d97e6c]/60">
-              <!-- 標註 1：品牌與期別 -->
-              <div class="relative text-center">
-                <span class="callout-badge absolute -left-2 -top-1 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查電子發票證明聯抬頭與雙月期別">1</span>
-                <div class="text-xl brand-101 tracking-widest">TAIPEI 101</div>
-                <div class="text-[19px] font-extrabold tracking-wider mt-0.5 leading-tight">電子發票證明聯</div>
-                <div class="text-[21px] font-extrabold tracking-wider leading-tight">115年11-12月</div>
-              </div>
-
-              <!-- 標註 2：發票字軌號碼 -->
-              <div class="relative text-center my-1">
-                <span class="callout-badge absolute -left-2 top-1 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查發票字軌號碼">2</span>
-                <div id="right-inv-no" class="text-[22px] font-extrabold mono tracking-tight">NE-58207426</div>
-              </div>
-
-              <!-- 標註 3：交易時間、隨機碼、總計、賣方/買方統編 -->
-              <div class="relative text-[11.5px] leading-snug space-y-0.5 mt-1">
-                <span class="callout-badge absolute -left-2 top-1 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查隨機碼、總計金額與買賣方統編">3</span>
-                <div class="mono">2026-11-23 17:05:39</div>
-                <div class="flex justify-between items-baseline">
-                  <span>隨機碼:<strong class="mono">9686</strong></span>
-                  <span class="font-bold">總計:<strong id="right-total" class="mono text-sm">100</strong></span>
-                </div>
-                <div class="flex justify-between items-center mono">
-                  <span>賣方:16095410</span>
-                  <span id="right-buyer-taxid" class="hidden font-extrabold bg-white/60 px-1.5 py-0.2 rounded text-rose-800">買方:87654321</span>
-                </div>
-              </div>
-
-              <!-- 標註 4：一維條碼與雙 QR Code -->
-              <div class="relative my-2.5">
-                <span class="callout-badge absolute -left-2 top-2 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查一維條碼與左右QR Code是否完整可掃">4</span>
-                <!-- Code39 一維條碼 -->
-                <div class="w-11/12 mx-auto h-8 flex items-stretch justify-between gap-[1px]">
-                  <div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1.5"></div>
-                  <div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-2"></div>
-                  <div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div>
-                  <div class="bg-neutral-900 w-1.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div>
-                  <div class="bg-neutral-900 w-2"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div>
-                  <div class="bg-neutral-900 w-1.5"></div><div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1"></div>
-                  <div class="bg-neutral-900 w-1.5"></div><div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1"></div>
-                  <div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1.5"></div>
-                </div>
-
-                <!-- 左右兩個 QR Code -->
-                <div class="flex justify-between items-center mt-2.5 px-2 gap-3">
-                  <div class="w-[74px] h-[74px] border-[1.5px] border-neutral-900 p-1 grid grid-cols-5 grid-rows-5 gap-0.5 bg-transparent">
-                    <div class="bg-neutral-900 col-span-2 row-span-2"></div>
-                    <div class="bg-neutral-900"></div><div></div><div class="bg-neutral-900"></div>
-                    <div></div><div class="bg-neutral-900"></div><div class="bg-neutral-900"></div>
-                    <div class="bg-neutral-900"></div><div class="bg-neutral-900 col-span-2"></div><div></div><div class="bg-neutral-900"></div>
-                    <div class="bg-neutral-900 col-span-2 row-span-2"></div>
-                    <div class="bg-neutral-900"></div><div class="bg-neutral-900"></div><div></div>
-                    <div class="bg-neutral-900"></div><div></div><div class="bg-neutral-900"></div>
-                  </div>
-                  <div class="w-[74px] h-[74px] border-[1.5px] border-neutral-900 p-1 grid grid-cols-5 grid-rows-5 gap-0.5 bg-transparent">
-                    <div></div><div class="bg-neutral-900"></div><div class="bg-neutral-900"></div><div class="bg-neutral-900 col-span-2 row-span-2"></div>
-                    <div class="bg-neutral-900"></div><div class="bg-neutral-900"></div><div></div>
-                    <div class="bg-neutral-900 col-span-2"></div><div class="bg-neutral-900"></div><div></div><div class="bg-neutral-900"></div>
-                    <div class="bg-neutral-900"></div><div></div><div class="bg-neutral-900"></div><div class="bg-neutral-900"></div><div></div>
-                    <div></div><div class="bg-neutral-900"></div><div class="bg-neutral-900"></div><div></div><div class="bg-neutral-900"></div>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 底部退換貨提示與機台序號 -->
-              <div id="upper-footer" class="text-center text-[10.5px] leading-snug pt-1">
-                <div>商品退換請持本聯及銷貨明細單</div>
-                <div class="mono font-medium tracking-tight mt-0.5">B0527-L32813-000003 20261123</div>
-              </div>
-
-              <!-- 模式 B 專用：連印不可切斷提示線 -->
-              <div id="b2b-continuous-divider" class="hidden mt-3 pt-2 border-t-2 border-dashed border-rose-800/70 text-center">
-                <span class="inline-block bg-rose-700 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow-sm">
-                  ▼ 統編發票須與明細連印（不可裁切分開）▼
-                </span>
-              </div>
-            </div>
-
-            <!-- ================= 下聯：銷貨明細表 ================= -->
-            <div id="lower-slip" class="w-full thermal-pink rounded-sm px-3.5 py-4 text-[11px] leading-[1.38] relative border border-[#d97e6c]/60">
-              <!-- 標註 1：品牌抬頭與營業人基本資料 -->
-              <div class="relative text-center pb-1.5">
-                <span class="callout-badge absolute -left-2 -top-1 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查抬頭、統編、地址與機台資訊">1</span>
-                <div class="text-xl brand-101 tracking-widest text-neutral-900">TAIPEI 101</div>
-                <div class="text-sm font-bold tracking-[0.28em] mt-0.5">銷 貨 明 細 表</div>
-              </div>
-
-              <div class="space-y-0.5 text-[10.5px] text-neutral-900/95">
-                <div>營業人統編：<span class="mono">16095410</span></div>
-                <div>台北金融大樓股份有限公司</div>
-                <div>台北市信義區市府路45號</div>
-                <div>B1~5F、B1之一、4F之一及6F之一、</div>
-                <div>台北市信義區信義路五段7號</div>
-                <div>59~60樓、89樓、101樓</div>
-                <div>電話：<span class="mono">02-81018800</span></div>
-                <div>入帳日期：<span class="mono">2026/11/23</span></div>
-                <div>列印日期：<span class="mono">2026/11/23 17:05</span></div>
-                <div class="mono">機號:L32813 序:000003收銀:66666666</div>
-                <div>櫃號:<span class="mono">B0527</span> 櫃名:蕭邦錶</div>
-                <div>發票號碼：<span id="left-inv-no" class="mono font-bold">NE58207426</span></div>
-                <div class="pt-0.5 text-[10px] leading-tight">
-                  贈品兌換請持本聯及發票證明聯至B1客服中心辦理;退貨請持本聯及發票證明辦理
-                </div>
-              </div>
-
-              <!-- 標註 5：銷貨明細商品與稅別記號 -->
-              <div class="relative mt-2.5 pt-2 border-t border-neutral-900/25">
-                <span class="callout-badge absolute -left-2 top-2 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查商品明細、單價數量小計與稅記號">5</span>
-                <div id="left-items" class="space-y-1.5 mono text-[11px]">
-                  <!-- 動態填入明細 -->
-                </div>
-              </div>
-
-              <!-- 標註 6：小計、稅額彙總、刷卡授權與購買總數量 -->
-              <div class="relative mt-2 pt-1.5 border-t border-neutral-900/25 mono text-[11px] space-y-0.5">
-                <span class="callout-badge absolute -left-2 top-1.5 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查稅額拆分、付款授權與總數量">6</span>
-                <div class="flex justify-between font-bold">
-                  <span>小計</span>
-                  <span id="left-subtotal">100</span>
-                </div>
-                <!-- 統編或混合稅別時顯示明細稅額拆算 -->
-                <div id="left-tax-breakdown" class="text-[10px] space-y-0.5 pt-0.5 text-neutral-900/90">
-                  <!-- 動態填入稅別拆算 -->
-                </div>
-                <div class="flex justify-between pt-0.5">
-                  <span id="left-pay-method">聯信-連 493817*******08</span>
-                  <span id="left-pay-amount">100</span>
-                </div>
-                <div>調閱編號:000001</div>
-                <div>授權編號:010001</div>
-                <div>購買總數量：<span id="left-qty-total">1件</span></div>
-              </div>
-
-              <!-- 標註 7：裁切虛線與底部發票金額＋條碼 -->
-              <div class="mt-2 pt-2 border-t border-dashed border-neutral-900/50 relative">
-                <span class="callout-badge absolute -left-2 top-2 bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full flex items-center justify-center shadow" title="檢查底部發票金額與櫃號條碼一致性">7</span>
-                <div class="flex justify-between items-baseline font-bold text-xs">
-                  <span>發票金額</span>
-                  <span id="left-bottom-amount" class="mono text-sm">100</span>
-                </div>
-                <div class="flex items-end justify-between gap-2 mt-1">
-                  <span class="font-extrabold text-sm mono">B0527</span>
-                  <div class="flex-1">
-                    <div class="h-6 flex items-stretch justify-between gap-[1px]">
-                      <div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1.5"></div>
-                      <div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-1.5"></div>
-                      <div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div>
-                      <div class="bg-neutral-900 w-1.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div>
-                      <div class="bg-neutral-900 w-1.5"></div><div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div>
-                      <div class="bg-neutral-900 w-1"></div><div class="bg-neutral-900 w-0.5"></div><div class="bg-neutral-900 w-1.5"></div>
-                    </div>
-                    <div class="text-[9.5px] text-center mono tracking-tight">*11512NE582074269686*</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </div>
-
-          <p id="receipt-caption" class="text-[11px] text-slate-600 text-center mt-3 leading-relaxed">
-            對照說明：上聯為「電子發票證明聯」，下聯為「銷貨明細表（含品項、稅記號、刷卡授權）」，紅色數字 <strong>1 ～ 7</strong> 對應右側查核表
-          </p>
-        </div>
-      </div>
-
-      <!-- 右側：人員逐項核對清單 (佔 8 欄，寬度變寬) -->
-      <div class="xl:col-span-8 space-y-4">
-
-        <!-- 進度條卡片 -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5">
-          <div class="flex items-center justify-between mb-2">
-            <div>
-              <h2 class="text-base sm:text-lg font-bold text-slate-900">版更基本人工查核表（共 12 項必檢點）</h2>
-              <p class="text-xs text-slate-500">每次 POS 廠商更新程式後，請至少印出「一般、統編、混合稅別」各一張進行核對</p>
-            </div>
-            <div class="text-right">
-              <span id="progress-text" class="text-lg font-extrabold text-indigo-600 mono">0 / 12</span>
-              <div class="text-[11px] text-slate-400">已完成項目</div>
-            </div>
-          </div>
-          <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-            <div id="progress-bar" class="bg-indigo-600 h-full transition-all duration-300" style="width: 0%"></div>
-          </div>
-
-          <!-- 12 項全勾選完成後的簽核單產出橫幅 -->
-          <div id="complete-banner" class="hidden mt-4 p-3.5 rounded-xl bg-emerald-50 border border-emerald-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 transition-all">
-            <div class="flex items-center gap-2.5">
-              <span class="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shrink-0">✓</span>
-              <div>
-                <div class="text-sm font-bold text-emerald-900">12 項基本檢核已全數通過！</div>
-                <div class="text-xs text-emerald-700">可立即產出正式版更驗收簽核單，供列印與人員／主管簽名存檔</div>
-              </div>
-            </div>
-            <button onclick="openSignoffModal()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-lg shadow-sm transition shrink-0 flex items-center justify-center gap-1.5">
+          <div class="flex flex-wrap items-center gap-2 no-print">
+            <button type="button" onclick="exportCasesToCSV()" class="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition flex items-center gap-1.5">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+              匯出 Excel (.csv)
+            </button>
+            <button type="button" onclick="openSignoffModal('cases')" class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs sm:text-sm font-bold rounded-xl shadow-sm transition flex items-center gap-1.5">
               <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-              產出正式簽名檢核表
+              產出 30 項測試簽核單
             </button>
           </div>
         </div>
 
-        <!-- 區塊一：版面與格式檢查 (對應 ① ~ ④) -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
-            <h3 class="font-bold text-slate-800 text-sm sm:text-base">A. 發票版面與法定欄位格式檢查（對照圖示 ①～④）</h3>
-            <span class="text-xs font-medium text-slate-500">防跑版 / 裁切 / 漏印</span>
+        <!-- 進度條與分類篩選器 -->
+        <div class="pt-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <!-- 分類篩選按鈕 -->
+          <div class="flex flex-wrap items-center gap-1.5 no-print" id="case-filter-group">
+            <button type="button" onclick="filterCases('ALL')" data-filter="ALL" class="case-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white transition">
+              全部 (30)
+            </button>
+            <button type="button" onclick="filterCases('TAXABLE')" data-filter="TAXABLE" class="case-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+              應稅銷售 (7)
+            </button>
+            <button type="button" onclick="filterCases('EXEMPT')" data-filter="EXEMPT" class="case-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+              免稅銷售 (7)
+            </button>
+            <button type="button" onclick="filterCases('ZERO_TAXID')" data-filter="ZERO_TAXID" class="case-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition">
+              ★ 外交官＋統編 (2)
+            </button>
+            <button type="button" onclick="filterCases('VOUCHER_NO_INV')" data-filter="VOUCHER_NO_INV" class="case-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition">
+              ★ 全額專商禮券免開發票 (3)
+            </button>
+            <button type="button" onclick="filterCases('CARRIER')" data-filter="CARRIER" class="case-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+              載具/捐贈/卡控 (7)
+            </button>
+            <button type="button" onclick="filterCases('REFUND_CLOSE')" data-filter="REFUND_CLOSE" class="case-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition">
+              退貨/清機結帳 (7)
+            </button>
           </div>
-          <div class="divide-y divide-slate-100">
-            <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
-              <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
-              <div class="flex-1 text-sm">
-                <div class="font-semibold text-slate-800 flex items-center gap-2">
-                  <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">1</span>
-                  期別與抬頭正確，無亂碼或字體過大被截斷
-                </div>
-                <p class="text-xs text-slate-500 mt-0.5">確認「電子發票證明聯」字樣完整，民國年與雙月期別（如 115年11-12月）與實際交易日期相符。</p>
-              </div>
-            </label>
 
-            <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
-              <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
-              <div class="flex-1 text-sm">
-                <div class="font-semibold text-slate-800 flex items-center gap-2">
-                  <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">2</span>
-                  發票字軌號碼為「2碼大寫英文 + 8碼數字」
-                </div>
-                <p class="text-xs text-slate-500 mt-0.5">確認未出現測試字軌（如 XX-00000000）、未跳號、未重複開立同一組號碼。</p>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
-              <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
-              <div class="flex-1 text-sm">
-                <div class="font-semibold text-slate-800 flex items-center gap-2">
-                  <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">3</span>
-                  隨機碼 4 碼、賣方統編 8 碼、買方統編與「連印不裁切」正確
-                </div>
-                <p class="text-xs text-slate-500 mt-0.5">無統編時證明聯與明細分開印出且不印買方統編；<strong>有統編時必須清楚印出「買方: 8碼統編」，且證明聯與交易明細必須連在一起印出（切刀不可在中間切斷）</strong>。</p>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
-              <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
-              <div class="flex-1 text-sm">
-                <div class="font-semibold text-slate-800 flex items-center gap-2">
-                  <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">4</span>
-                  一維條碼與左右兩個 QR Code 清晰且未被裁切
-                </div>
-                <p class="text-xs text-slate-500 mt-0.5">用手機掃碼器或財政部兌獎 App 實測掃描左右 QR Code，確認能正常讀取且邊緣無切刀切斷線條。</p>
-              </div>
-            </label>
+          <!-- 執行進度數字 -->
+          <div class="flex items-center gap-3 shrink-0">
+            <div class="w-36 bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div id="cases-progress-bar" class="bg-emerald-600 h-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+            <span id="cases-progress-text" class="text-sm font-extrabold text-emerald-700 mono">0 / 30 (0%)</span>
           </div>
         </div>
-
-        <!-- 區塊二：數字、稅別與金額驗算 (對應 ⑤ ~ ⑥) -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div class="bg-amber-50 px-5 py-3 border-b border-amber-200 flex items-center justify-between">
-            <h3 class="font-bold text-amber-900 text-sm sm:text-base">B. 數字、稅別記號與稅額驗算（對照圖示 ⑤～⑥ ★核心必檢）</h3>
-            <span class="text-xs font-bold text-amber-700">最常改版出錯區</span>
-          </div>
-          <div class="divide-y divide-slate-100">
-            <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
-              <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
-              <div class="flex-1 text-sm">
-                <div class="font-semibold text-slate-800 flex items-center gap-2">
-                  <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">5</span>
-                  明細「單價 × 數量 ＝ 小計」與折扣折讓逐行驗算無誤
-                </div>
-                <p class="text-xs text-slate-500 mt-0.5">特別檢查買一送一、第二件半價、滿額折扣、負數折讓行，確認折扣金額正確扣減，未出現多算或少算 1 元。</p>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
-              <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
-              <div class="flex-1 text-sm">
-                <div class="font-semibold text-slate-800 flex items-center gap-2">
-                  <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">5</span>
-                  商品右側稅別記號正確（應稅 TX/TN、免稅不印或 EX、零稅 TZ）
-                </div>
-                <p class="text-xs text-slate-500 mt-0.5">應稅品項印出 <strong>TX / TN</strong>；免稅品項（黃金、農產品）通常<strong>留空不印</strong>（或依系統規範印 EX）；零稅率（外交官）印 <strong>TZ / 零稅</strong>（或依規範留空），嚴禁誤印為應稅 TX/TN。</p>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
-              <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
-              <div class="flex-1 text-sm">
-                <div class="font-semibold text-slate-800 flex items-center gap-2">
-                  <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">6</span>
-                  有統編發票「銷售額 ＋ 稅額 ＝ 總計」四捨五入正確
-                </div>
-                <p class="text-xs text-slate-500 mt-0.5">驗算公式：<code class="bg-slate-100 px-1 rounded mono">銷售額 = Round(應稅含稅金額 ÷ 1.05)</code>，<code class="bg-slate-100 px-1 rounded mono">稅額 = 應稅含稅金額 - 銷售額</code>。確認兩者相加等於總計。</p>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
-              <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
-              <div class="flex-1 text-sm">
-                <div class="font-semibold text-slate-800 flex items-center gap-2">
-                  <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">6</span>
-                  混合稅別（應稅＋免稅）時，免稅金額未計入 5% 稅額
-                </div>
-                <p class="text-xs text-slate-500 mt-0.5">同筆結帳同時有應稅與免稅品項時，稅額只能針對「應稅部分」計算，免稅銷售額與零稅率銷售額須分開加總。</p>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <!-- 區塊三：異常與帳務一致性檢查 (對應 ⑦ 與後台) -->
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-          <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 flex items-center justify-between">
-            <h3 class="font-bold text-slate-800 text-sm sm:text-base">C. 付款方式、未開發票與前後台帳務一致性（對照圖示 ⑦）</h3>
-            <span class="text-xs font-medium text-slate-500">防漏帳 / 狀態不同步</span>
-          </div>
-          <div class="divide-y divide-slate-100">
-            <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
-              <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
-              <div class="flex-1 text-sm">
-                <div class="font-semibold text-slate-800 flex items-center gap-2">
-                  <span class="bg-rose-600 text-white text-xs font-bold w-5 h-5 rounded-full inline-flex items-center justify-center shrink-0 shadow-sm">7</span>
-                  付款方式金額加總 ＝ 發票總計（含多元支付拆分）
-                </div>
-                <p class="text-xs text-slate-500 mt-0.5">測試「現金＋信用卡」或「點數折抵＋行動支付」混合付款時，底部付款金額加總與上方總計完全一致。</p>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
-              <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
-              <div class="flex-1 text-sm">
-                <div class="font-semibold text-slate-800">「未開發票」交易確實不出發票紙張，僅出收據/明細</div>
-                <p class="text-xs text-slate-500 mt-0.5">購買禮券/儲值或選擇免開發票時，不得耗用發票字軌號碼，憑證抬頭不可印出「電子發票證明聯」。</p>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
-              <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
-              <div class="flex-1 text-sm">
-                <div class="font-semibold text-slate-800">作廢 / 退貨折讓單可正常執行且金額正負號正確</div>
-                <p class="text-xs text-slate-500 mt-0.5">更版後務必實測作廢剛開出的發票，確認能印出作廢單且該筆發票狀態同步更新。</p>
-              </div>
-            </label>
-
-            <label class="flex items-start gap-3 p-4 hover:bg-slate-50 cursor-pointer transition">
-              <input type="checkbox" class="chk-item mt-1 w-4 h-4 rounded text-indigo-600 focus:ring-indigo-500" onchange="updateProgress()">
-              <div class="flex-1 text-sm">
-                <div class="font-semibold text-slate-800">紙本發票數字 ＝ POS 日結報表 ＝ 財政部平台上傳資料</div>
-                <p class="text-xs text-slate-500 mt-0.5">最後一步比對紙本發票的「字軌、隨機碼、應稅/免稅/零稅率金額」與 POS 後台交易明細完全一致。</p>
-              </div>
-            </label>
-          </div>
-        </div>
-
       </div>
+
+      <!-- 30 項測試交易執行表格 -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-slate-800 text-white text-xs">
+                <th class="py-3 px-3 w-12 text-center">執行</th>
+                <th class="py-3 px-3 w-16 text-center">序號</th>
+                <th class="py-3 px-3 w-28">宣告類型</th>
+                <th class="py-3 px-3 min-w-[260px]">測試 CASE 情境與操作步驟</th>
+                <th class="py-3 px-3 min-w-[240px]">預期結果與實體出紙檢核重點</th>
+                <th class="py-3 px-3 w-44">實測發票號碼 / 備註</th>
+              </tr>
+            </thead>
+            <tbody id="test-cases-tbody" class="divide-y divide-slate-200 text-xs sm:text-[13px]">
+              <!-- 動態渲染 30 筆測試案例 -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
     </div>
   </main>
 
   <!-- 正式可列印簽名檢核表 Modal -->
   <div id="signoff-modal" class="hidden fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs overflow-y-auto p-4 sm:p-6 flex items-start justify-center">
-    <div id="signoff-card" class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-4">
+    <div id="signoff-card" class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl border border-slate-200 overflow-hidden my-4">
       <!-- 彈窗操作列（列印時自動隱藏） -->
       <div class="bg-slate-800 text-white px-5 py-3 flex items-center justify-between no-print">
-        <span class="text-sm font-bold">POS 版更驗收簽核單預覽</span>
+        <span id="modal-header-title" class="text-sm font-bold">POS 版更驗收簽核單預覽</span>
         <div class="flex items-center gap-2">
-          <button onclick="printSignoffSheet()" class="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5">
+          <button type="button" onclick="printSignoffSheet()" class="px-3.5 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5">
             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/></svg>
             列印此簽核單 / 存成 PDF
           </button>
-          <button onclick="closeSignoffModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">
+          <button type="button" onclick="closeSignoffModal()" class="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-slate-200 text-xs rounded-lg transition">
             關閉
           </button>
         </div>
@@ -524,7 +635,7 @@
         <div class="border-b-2 border-slate-900 pb-3 flex flex-col sm:flex-row sm:items-end sm:justify-between gap-2">
           <div>
             <div class="text-xs font-bold tracking-widest text-slate-500 uppercase">POS Release QA Verification Sheet</div>
-            <h2 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-0.5">POS 程式更版 — 發票格式與數字人工檢核表</h2>
+            <h2 id="report-main-title" class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-0.5">POS 程式更版 — 發票格式與數字人工檢核表</h2>
           </div>
           <div class="text-xs text-slate-600 mono">
             產出時間：<span id="report-timestamp"></span>
@@ -542,33 +653,33 @@
             <input type="text" placeholder="例：L32813 / B0527" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500">
           </div>
           <div>
-            <label class="font-bold text-slate-700 block mb-1">測試樣張發票號碼：</label>
-            <input type="text" placeholder="例：NE-58207426" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500">
+            <label class="font-bold text-slate-700 block mb-1">測試樣張發票起迄號碼：</label>
+            <input type="text" placeholder="例：NE-58207426 ~ NE-58207450" class="w-full bg-white border border-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-indigo-500">
           </div>
         </div>
 
-        <!-- 12 項檢核明細表格 -->
+        <!-- 檢核明細表格 -->
         <table class="w-full text-xs border-collapse border border-slate-400">
           <thead>
-            <tr class="bg-slate-100 text-slate-800">
+            <tr id="report-table-head" class="bg-slate-100 text-slate-800">
               <th class="border border-slate-400 px-2.5 py-2 w-12 text-center">項次</th>
               <th class="border border-slate-400 px-3 py-2 text-left">查核項目內容</th>
-              <th class="border border-slate-400 px-2.5 py-2 w-20 text-center">查核結果</th>
+              <th class="border border-slate-400 px-2.5 py-2 w-24 text-center">查核結果</th>
             </tr>
           </thead>
           <tbody id="report-table-body">
-            <!-- 動態帶入 12 項標題 -->
+            <!-- 動態帶入檢核項目 -->
           </tbody>
         </table>
 
         <!-- 備註欄 -->
         <div class="text-xs">
           <div class="font-bold text-slate-700 mb-1">異常說明 / 備註事項：</div>
-          <textarea rows="9" placeholder="若有特殊備註可在此輸入，或印出後手寫補充..." class="w-full min-h-[180px] border border-slate-300 rounded-lg p-2.5 text-xs leading-relaxed focus:outline-none focus:border-indigo-500"></textarea>
+          <textarea rows="5" placeholder="若有特殊備註可在此輸入，或印出後手寫補充..." class="w-full min-h-[110px] border border-slate-300 rounded-lg p-2.5 text-xs leading-relaxed focus:outline-none focus:border-indigo-500"></textarea>
         </div>
 
         <!-- 簽名欄 -->
-        <div class="grid grid-cols-2 gap-6 pt-4">
+        <div class="grid grid-cols-2 gap-6 pt-3">
           <div class="border border-slate-400 rounded-xl p-3.5">
             <div class="text-xs font-bold text-slate-700">測試人員簽名：</div>
             <div class="h-12 border-b border-dashed border-slate-400 my-2"></div>
@@ -589,7 +700,42 @@
   </div>
 
   <script>
-    // 依據 TAIPEI 101 實體雙聯發票設計三種測試驗證模式
+    // =========================================================================
+    // 1. 頁籤切換邏輯 (Tab 1: 發票圖鑑 / Tab 2: 30項交易測試執行表)
+    // =========================================================================
+    let currentTab = 'visual';
+
+    function switchTab(tabName) {
+      currentTab = tabName;
+      const panelVisual = document.getElementById('tab-panel-visual');
+      const panelCases = document.getElementById('tab-panel-cases');
+      const btnVisual = document.getElementById('tab-btn-visual');
+      const btnCases = document.getElementById('tab-btn-cases');
+
+      if (!panelVisual || !panelCases || !btnVisual || !btnCases) return;
+
+      if (tabName === 'visual') {
+        panelVisual.classList.remove('hidden');
+        panelVisual.classList.add('block');
+        panelCases.classList.remove('block');
+        panelCases.classList.add('hidden');
+
+        btnVisual.className = 'px-4 py-2.5 text-xs sm:text-sm font-bold rounded-t-xl bg-slate-100 text-slate-900 border-t-2 border-indigo-500 transition flex items-center gap-2';
+        btnCases.className = 'px-4 py-2.5 text-xs sm:text-sm font-bold rounded-t-xl bg-slate-700/70 text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-2';
+      } else {
+        panelCases.classList.remove('hidden');
+        panelCases.classList.add('block');
+        panelVisual.classList.remove('block');
+        panelVisual.classList.add('hidden');
+
+        btnCases.className = 'px-4 py-2.5 text-xs sm:text-sm font-bold rounded-t-xl bg-slate-100 text-slate-900 border-t-2 border-amber-500 transition flex items-center gap-2';
+        btnVisual.className = 'px-4 py-2.5 text-xs sm:text-sm font-bold rounded-t-xl bg-slate-700/70 text-slate-300 hover:bg-slate-700 hover:text-white transition flex items-center gap-2';
+      }
+    }
+
+    // =========================================================================
+    // 2. 頁籤一：實體發票樣張三種模式設定 (已移除混合稅別，強化外交官+統編)
+    // =========================================================================
     const modes = {
       b2c: {
         tag: '模式 A：一般無統編（對照實體樣張）',
@@ -609,37 +755,36 @@
         total: '100'
       },
       b2b: {
-        tag: '模式 B：有統編＋混合稅別（應稅＋免稅）',
+        tag: '模式 B：有統編（純應稅＋稅額拆分＋連印不裁切）',
         buyerTaxId: '買方:87654321',
         showBuyer: true,
         items: [
-          { code: 'F04', name: '精品腕錶保養組', qty: '2*4,200', sub: '8,400 TX' },
-          { code: 'G01', name: '投資型純金紀念幣 1錢', qty: '1*12,000', sub: '12,000 (免稅不印記號)' }
+          { code: 'F04', name: '精品腕錶保養組', qty: '2*4,200', sub: '8,400 TX' }
         ],
         taxBreakdown: [
           { label: '應稅銷售額(未稅):', val: '8,000' },
           { label: '營業稅額(5%):', val: '400' },
-          { label: '免稅銷售額:', val: '12,000' }
+          { label: '免稅銷售額:', val: '0' }
         ],
-        subtotal: '20,400',
+        subtotal: '8,400',
         payMethod: '聯信-連 493817*******08',
-        payAmount: '20,400',
-        qtyTotal: '3件',
-        total: '20,400'
+        payAmount: '8,400',
+        qtyTotal: '2件',
+        total: '8,400'
       },
       zero: {
-        tag: '模式 C：零稅率（外交官／外銷專櫃）',
-        buyerTaxId: '買方:外交免稅證',
+        tag: '模式 C：零稅率（外交官／外銷專櫃＋機關統編）',
+        buyerTaxId: '買方:03795909(外交)',
         showBuyer: true,
         items: [
-          { code: 'F04', name: '限量機械腕錶（外交免稅）', qty: '1*5,300', sub: '5,300 TZ' }
+          { code: 'F04', name: '限量機械腕錶（外交零稅）', qty: '1*5,300', sub: '5,300 TZ' }
         ],
         taxBreakdown: [
           { label: '零稅率銷售額:', val: '5,300' },
           { label: '營業稅額(0%):', val: '0' }
         ],
         subtotal: '5,300',
-        payMethod: '外幣/現金支付',
+        payMethod: '聯信-連 493817*******08',
         payAmount: '5,300',
         qtyTotal: '1件',
         total: '5,300'
@@ -650,9 +795,10 @@
       const data = modes[modeKey];
       if (!data) return;
 
-      // 更新按鈕樣式（維持滿版靠左直列排列）
+      // 安全切換三個模式按鈕樣式
       ['b2c', 'b2b', 'zero'].forEach(key => {
         const btn = document.getElementById(`btn-${key}`);
+        if (!btn) return;
         if (key === modeKey) {
           btn.className = 'w-full text-left px-4 py-2 rounded-xl text-sm font-semibold bg-indigo-600 text-white shadow-sm transition';
         } else {
@@ -660,143 +806,638 @@
         }
       });
 
-      // 更新標籤與買方統編顯示
-      document.getElementById('mode-tag').textContent = data.tag;
+      // 安全更新發票樣張 DOM 元素
+      const modeTagEl = document.getElementById('mode-tag');
+      if (modeTagEl) modeTagEl.textContent = data.tag;
+
       const buyerEl = document.getElementById('right-buyer-taxid');
-      if (data.showBuyer) {
-        buyerEl.textContent = data.buyerTaxId;
-        buyerEl.classList.remove('hidden');
-      } else {
-        buyerEl.classList.add('hidden');
+      if (buyerEl) {
+        if (data.showBuyer) {
+          buyerEl.textContent = data.buyerTaxId;
+          buyerEl.classList.remove('hidden');
+        } else {
+          buyerEl.textContent = '';
+          buyerEl.classList.add('hidden');
+        }
       }
 
-      // 更新左聯銷貨明細表商品列
       const itemsContainer = document.getElementById('left-items');
-      itemsContainer.innerHTML = data.items.map(item => `
-        <div>
-          <div>${item.code}</div>
-          <div>${item.name}</div>
-          <div class="flex justify-between">
-            <span>${item.qty}</span>
-            <span class="font-bold">${item.sub}</span>
+      if (itemsContainer) {
+        itemsContainer.innerHTML = data.items.map(item => `
+          <div>
+            <div>${item.code}</div>
+            <div>${item.name}</div>
+            <div class="flex justify-between">
+              <span>${item.qty}</span>
+              <span class="font-bold">${item.sub}</span>
+            </div>
           </div>
-        </div>
-      `).join('');
+        `).join('');
+      }
 
-      // 更新左聯稅額拆算區
       const taxContainer = document.getElementById('left-tax-breakdown');
-      taxContainer.innerHTML = data.taxBreakdown.map(row => `
-        <div class="flex justify-between">
-          <span>${row.label}</span>
-          <span>${row.val}</span>
-        </div>
-      `).join('');
+      if (taxContainer) {
+        taxContainer.innerHTML = data.taxBreakdown.map(row => `
+          <div class="flex justify-between">
+            <span>${row.label}</span>
+            <span>${row.val}</span>
+          </div>
+        `).join('');
+      }
 
-      // 同步更新左右兩聯所有金額與數量
-      document.getElementById('left-subtotal').textContent = data.subtotal;
-      document.getElementById('left-pay-method').textContent = data.payMethod;
-      document.getElementById('left-pay-amount').textContent = data.payAmount;
-      document.getElementById('left-qty-total').textContent = data.qtyTotal;
-      document.getElementById('left-bottom-amount').textContent = data.total;
-      document.getElementById('right-total').textContent = data.total;
+      const textUpdates = {
+        'left-subtotal': data.subtotal,
+        'left-pay-method': data.payMethod,
+        'left-pay-amount': data.payAmount,
+        'left-qty-total': data.qtyTotal,
+        'left-bottom-amount': data.total,
+        'right-total': data.total
+      };
+      Object.entries(textUpdates).forEach(([id, value]) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+      });
 
-      // 控制模式 B（有統編）時，證明聯與明細連在一起印出、不可拆分
+      // 控制有統編（模式 B 或 模式 C）時，證明聯與明細連在一起印出、不可拆分
       const wrapper = document.getElementById('receipt-wrapper');
       const upperSlip = document.getElementById('upper-slip');
       const lowerSlip = document.getElementById('lower-slip');
       const divider = document.getElementById('b2b-continuous-divider');
+      const dividerText = document.getElementById('continuous-divider-text');
       const caption = document.getElementById('receipt-caption');
 
-      if (modeKey === 'b2b') {
-        wrapper.classList.remove('gap-3.5');
-        wrapper.classList.add('gap-0');
-        upperSlip.classList.remove('rounded-sm', 'border');
-        upperSlip.classList.add('rounded-t-sm', 'border-t', 'border-x', 'border-b-0', 'pb-2');
-        lowerSlip.classList.remove('rounded-sm', 'border');
-        lowerSlip.classList.add('rounded-b-sm', 'border-b', 'border-x', 'border-t-0', 'pt-2');
-        divider.classList.remove('hidden');
-        caption.innerHTML = '對照說明：<strong class="text-rose-700">有統編發票須連印在同一張紙卷上（中間不可裁切）</strong>，紅色數字 <strong>1 ～ 7</strong> 對應右側查核表';
-      } else {
-        wrapper.classList.remove('gap-0');
-        wrapper.classList.add('gap-3.5');
-        upperSlip.classList.remove('rounded-t-sm', 'border-t', 'border-x', 'border-b-0', 'pb-2');
-        upperSlip.classList.add('rounded-sm', 'border');
-        lowerSlip.classList.remove('rounded-b-sm', 'border-b', 'border-x', 'border-t-0', 'pt-2');
-        lowerSlip.classList.add('rounded-sm', 'border');
-        divider.classList.add('hidden');
-        caption.innerHTML = '對照說明：上聯為「電子發票證明聯」，下聯為「銷貨明細表（含品項、稅記號、刷卡授權）」，紅色數字 <strong>1 ～ 7</strong> 對應右側查核表';
+      if (wrapper && upperSlip && lowerSlip && divider && caption) {
+        if (modeKey === 'b2b' || modeKey === 'zero') {
+          wrapper.classList.remove('gap-3.5');
+          wrapper.classList.add('gap-0');
+          upperSlip.classList.remove('rounded-sm', 'border');
+          upperSlip.classList.add('rounded-t-sm', 'border-t', 'border-x', 'border-b-0', 'pb-2');
+          lowerSlip.classList.remove('rounded-sm', 'border');
+          lowerSlip.classList.add('rounded-b-sm', 'border-b', 'border-x', 'border-t-0', 'pt-2');
+          divider.classList.remove('hidden');
+          if (dividerText) {
+            dividerText.textContent = modeKey === 'zero'
+              ? '▼ 外交官輸入機關統編時，證明聯與明細連印且稅額為 0 ▼'
+              : '▼ 統編發票須與明細連印（不可裁切分開）▼';
+          }
+          caption.innerHTML = modeKey === 'zero'
+            ? '對照說明：<strong class="text-indigo-700">外交官＋機關統編交叉驗證</strong>：印出買方統編、稅記號 TZ、營業稅額 0'
+            : '對照說明：<strong class="text-rose-700">有統編發票須連印在同一張紙卷上（中間不可裁切）</strong>，紅色數字 <strong>1 ～ 7</strong> 對應右側查核表';
+        } else {
+          wrapper.classList.remove('gap-0');
+          wrapper.classList.add('gap-3.5');
+          upperSlip.classList.remove('rounded-t-sm', 'border-t', 'border-x', 'border-b-0', 'pb-2');
+          upperSlip.classList.add('rounded-sm', 'border');
+          lowerSlip.classList.remove('rounded-b-sm', 'border-b', 'border-x', 'border-t-0', 'pt-2');
+          lowerSlip.classList.add('rounded-sm', 'border');
+          divider.classList.add('hidden');
+          caption.innerHTML = '對照說明：上聯為「電子發票證明聯」，下聯為「銷貨明細表（含品項、稅記號、刷卡授權）」，紅色數字 <strong>1 ～ 7</strong> 對應右側查核表';
+        }
       }
     }
 
-    // 5% 營業稅四捨五入反推計算
     function calcTax() {
-      const raw = parseFloat(document.getElementById('calc-input').value);
+      const inputEl = document.getElementById('calc-input');
+      const salesEl = document.getElementById('calc-sales');
+      const taxEl = document.getElementById('calc-tax');
+      if (!inputEl || !salesEl || !taxEl) return;
+
+      const raw = parseFloat(inputEl.value);
       if (isNaN(raw) || raw < 0) {
-        document.getElementById('calc-sales').textContent = '0';
-        document.getElementById('calc-tax').textContent = '0';
+        salesEl.textContent = '0';
+        taxEl.textContent = '0';
         return;
       }
       const total = Math.round(raw);
       const sales = Math.round(total / 1.05);
       const tax = total - sales;
-      document.getElementById('calc-sales').textContent = sales.toLocaleString();
-      document.getElementById('calc-tax').textContent = tax.toLocaleString();
+      salesEl.textContent = sales.toLocaleString();
+      taxEl.textContent = tax.toLocaleString();
     }
 
-    // 更新查核表進度
     function updateProgress() {
-      const checkboxes = document.querySelectorAll('.chk-item');
+      const checkboxes = document.querySelectorAll('#tab-panel-visual .chk-item');
       const total = checkboxes.length;
       let checked = 0;
       checkboxes.forEach(cb => {
         if (cb.checked) checked++;
       });
-      document.getElementById('progress-text').textContent = `${checked} / ${total}`;
-      document.getElementById('progress-bar').style.width = `${(checked / total) * 100}%`;
+
+      const progressText = document.getElementById('progress-text');
+      const progressBar = document.getElementById('progress-bar');
+      const tabBadge = document.getElementById('tab-badge-visual');
+      if (progressText) progressText.textContent = `${checked} / ${total}`;
+      if (progressBar) progressBar.style.width = `${(checked / total) * 100}%`;
+      if (tabBadge) tabBadge.textContent = `${checked}/${total}`;
 
       const banner = document.getElementById('complete-banner');
-      if (checked === total) {
-        banner.classList.remove('hidden');
-      } else {
-        banner.classList.add('hidden');
+      if (banner) {
+        if (checked === total) {
+          banner.classList.remove('hidden');
+        } else {
+          banner.classList.add('hidden');
+        }
       }
     }
 
-    function resetChecklist() {
-      document.querySelectorAll('.chk-item').forEach(cb => cb.checked = false);
-      updateProgress();
-    }
+    // =========================================================================
+    // 3. 頁籤二：30 項整合測試案例資料與渲染邏輯
+    //    (完整納入廠商 001~027 案例，無混合稅別，新增外交官+統編與全額專商禮券驗證)
+    // =========================================================================
+    const testCasesData = [
+      {
+        seq: '001',
+        type: '無統編',
+        cats: ['TAXABLE'],
+        scenario: '應稅銷售，全應稅商品 ＋ 未開支付\n商品 1000 元，刷卡 1000 元',
+        expected: '正常開立一般二聯發票（証明聯與明細分開裁切），總計 1000，稅別 TX。',
+        highlight: ''
+      },
+      {
+        seq: '002',
+        type: '統編',
+        cats: ['TAXABLE'],
+        scenario: '應稅銷售，全應稅商品 ＋ 未開支付\n商品 1000 元，刷卡 1000 元\n【必測】請確認程式須有統編格式檢查機制',
+        expected: '1. 輸入錯誤統編（非8碼或邏輯錯誤）須阻擋。\n2. 正確統編印出買方統編，銷售額 952＋稅額 48＝1000，且證明聯與明細連印不裁切。',
+        highlight: 'format'
+      },
+      {
+        seq: '003',
+        type: '統編',
+        cats: ['TAXABLE'],
+        scenario: '應稅銷售，全應稅商品 ＋ 已開、未開支付\n商品 1000 元，刷卡 700 元，專商禮券 300 元',
+        expected: '已開專商禮券 300 元不重複開立發票，發票總計僅開立 700 元（銷售額 667＋稅額 33），連印不裁切。',
+        highlight: ''
+      },
+      {
+        seq: '004',
+        type: '統編',
+        cats: ['TAXABLE', 'VOUCHER_NO_INV'],
+        scenario: '應稅銷售，全應稅商品 ＋ 已開支付\n商品 1000 元，全額專商禮券 1000 元',
+        expected: '【實體出紙必檢】全額已開支付（未開發票），機器「不得印出電子發票證明聯」亦不可耗用字軌，僅印出銷貨明細表。',
+        highlight: 'voucher'
+      },
+      {
+        seq: '005',
+        type: '外交官',
+        cats: ['TAXABLE'],
+        scenario: '應稅商品轉零稅率（外交官）＋ 未開支付\n商品 1000 元，刷卡 1000 元',
+        expected: '外交免稅證檢核通過，發票總計 1000，稅別記號 TZ，營業稅額為 0。',
+        highlight: ''
+      },
+      {
+        seq: '006',
+        type: '外交官',
+        cats: ['TAXABLE'],
+        scenario: '應稅商品轉零稅率（外交官）＋ 已開、未開支付\n商品 1000 元，刷卡 700 元，專商禮券 300 元',
+        expected: '扣除已開專商禮券 300 元，發票開立 700 元（零稅率銷售額 700、稅額 0、稅別 TZ）。',
+        highlight: ''
+      },
+      {
+        seq: '007',
+        type: '外交官',
+        cats: ['TAXABLE', 'VOUCHER_NO_INV'],
+        scenario: '應稅商品轉零稅率（外交官）＋ 已開支付\n商品 1000 元，全額專商禮券 1000 元',
+        expected: '【實體出紙必檢】全額專商禮券結帳（未開發票），確認「未印出電子發票證明聯」，僅出銷貨明細表。',
+        highlight: 'voucher'
+      },
+      {
+        seq: '008',
+        type: '無統編',
+        cats: ['EXEMPT'],
+        scenario: '免稅銷售，全免稅商品 ＋ 未開支付\n商品 1000 元，刷卡 1000 元',
+        expected: '正常開立無統編發票，免稅銷售額 1000，明細免稅記號正確（不印 TX）。',
+        highlight: ''
+      },
+      {
+        seq: '009',
+        type: '統編',
+        cats: ['EXEMPT'],
+        scenario: '免稅銷售，全免稅商品 ＋ 未開支付\n商品 1000 元，刷卡 1000 元\n【必測】請確認程式須有統編格式檢查機制',
+        expected: '1. 統編格式錯誤阻擋。\n2. 正確統編連印證明聯與明細，應稅銷售額 0、稅額 0、免稅銷售額 1000。',
+        highlight: 'format'
+      },
+      {
+        seq: '010',
+        type: '統編',
+        cats: ['EXEMPT'],
+        scenario: '免稅銷售，全免稅商品 ＋ 已開、未開支付\n商品 1000 元，刷卡 700 元，專商禮券 300 元',
+        expected: '發票開立餘額 700 元（免稅銷售額 700、稅額 0），有統編連印不裁切。',
+        highlight: ''
+      },
+      {
+        seq: '011',
+        type: '統編',
+        cats: ['EXEMPT', 'VOUCHER_NO_INV'],
+        scenario: '免稅銷售，全免稅商品 ＋ 已開支付\n商品 1000 元，全額專商禮券 1000 元',
+        expected: '【實體出紙必檢】全額專商禮券結帳（未開發票），確認「未印出電子發票證明聯」，僅出銷貨明細表。',
+        highlight: 'voucher'
+      },
+      {
+        seq: '012',
+        type: '外交官',
+        cats: ['EXEMPT'],
+        scenario: '免稅銷售（外交官）＋ 未開支付\n商品 1000 元，刷卡 1000 元',
+        expected: '發票總計 1000，稅額 0，確認免稅／零稅率欄位歸屬正確。',
+        highlight: ''
+      },
+      {
+        seq: '013',
+        type: '外交官',
+        cats: ['EXEMPT'],
+        scenario: '免稅銷售（外交官）＋ 已開、未開支付\n商品 1000 元，刷卡 700 元，專商禮券 300 元',
+        expected: '扣除專商禮券 300 元後，發票開立 700 元，稅額 0。',
+        highlight: ''
+      },
+      {
+        seq: '014',
+        type: '外交官',
+        cats: ['EXEMPT'],
+        scenario: '免稅銷售（外交官）＋ 已開支付\n商品 1000 元，全額專商禮券 1000 元',
+        expected: '【實體出紙必檢】全額專商禮券（未開發票），確認「未印出電子發票證明聯」，僅出銷貨明細表。',
+        highlight: 'voucher'
+      },
+      {
+        seq: '015',
+        type: '外交官＋統編',
+        cats: ['ZERO_TAXID'],
+        scenario: '【新增交叉驗證】零稅率（外交官）＋ 有統編 / 機關統一編號\n商品 1000 元，輸入外交機關統編（8碼），刷卡 1000 元',
+        expected: '1. 證明聯須清楚印出「買方: 機關統編」且與明細連印。\n2. 稅額必須為 0（零稅率銷售額 1000、稅別 TZ），嚴禁系統誤拆出 5% 稅額！',
+        highlight: 'zero_taxid'
+      },
+      {
+        seq: '016',
+        type: '外交官＋統編',
+        cats: ['ZERO_TAXID'],
+        scenario: '【新增交叉驗證】零稅率（外交官）＋ 機關統一編號（異常格式與退貨）\n測試輸入錯誤機關統編阻擋；並測試 015 筆之整筆退貨作廢',
+        expected: '1. 機關統編仍須經過 8 碼邏輯檢核機制。\n2. 退貨時原零稅率＋統編發票正常作廢，稅額 0 沖銷無誤。',
+        highlight: 'zero_taxid'
+      },
+      {
+        seq: '017',
+        type: '手機條碼',
+        cats: ['CARRIER'],
+        scenario: '銷售 1500 元，打手機條碼（例：/AB12345）\n商品 1500 元，現金 1500 元\n【必測】請確認程式須有手機條碼格式檢查機制',
+        expected: '1. 錯誤格式（非 / 開頭或長度非 8 碼）須阻擋。\n2. 存入載具成功時「不印出電子發票證明聯」，僅印交易明細。',
+        highlight: 'format'
+      },
+      {
+        seq: '018',
+        type: '自然人憑證',
+        cats: ['CARRIER'],
+        scenario: '銷售 1500 元，打自然人憑證條碼（2碼大寫英文+14碼數字）\n商品 1500 元，現金 1500 元\n【必測】請確認程式須有自然人憑證條碼格式檢查機制',
+        expected: '1. 錯誤格式（長度非 16 碼或前 2 碼非大寫英文）須阻擋。\n2. 存入載具成功時不印出證明聯，僅印交易明細。',
+        highlight: 'format'
+      },
+      {
+        seq: '019',
+        type: '捐贈碼',
+        cats: ['CARRIER'],
+        scenario: '銷售 1500 元，打捐贈碼（3~7 碼數字）\n商品 1500 元，現金 1500 元\n【必測】請確認程式須有捐贈碼格式檢查機制',
+        expected: '1. 錯誤格式（非 3~7 碼純數字）須阻擋。\n2. 捐贈成功不印出證明聯，明細顯示愛心碼／捐贈對象。',
+        highlight: 'format'
+      },
+      {
+        seq: '020',
+        type: '卡控',
+        cats: ['CARRIER'],
+        scenario: '銷售，有統編 ＋ 捐贈碼（或共通性載具）\n應不可進行交易',
+        expected: '系統卡控生效：輸入買方統編後，應反灰鎖定或跳出警示禁止同時輸入捐贈碼／手機條碼。',
+        highlight: 'format'
+      },
+      {
+        seq: '021',
+        type: '悠遊卡載具',
+        cats: ['CARRIER'],
+        scenario: '銷售 1 元，打悠遊卡載具（悠遊卡感應扣款或隱碼載具）',
+        expected: '載具寫入成功，不印出電子發票證明聯，僅印銷貨明細並顯示載具號碼。',
+        highlight: ''
+      },
+      {
+        seq: '022',
+        type: '信用卡載具',
+        cats: ['CARRIER'],
+        scenario: '銷售 1500 元\n商品 1500 元，聯信刷卡 1500 元（信用卡存載具）',
+        expected: '信用卡載具開立成功，不印出證明聯，明細顯示信用卡載具資訊。',
+        highlight: ''
+      },
+      {
+        seq: '023',
+        type: '會員載具',
+        cats: ['CARRIER'],
+        scenario: '銷售 1500 元\n商品 1500 元，聯信刷卡 1500 元，刷 TAIPEI 101 會員卡存載具',
+        expected: '會員載具歸戶成功，不印出證明聯，明細印出會員卡號與載具資訊。',
+        highlight: ''
+      },
+      {
+        seq: '024',
+        type: '退貨',
+        cats: ['REFUND_CLOSE'],
+        scenario: '退掉序 002（應稅＋有統編發票）',
+        expected: '收回原統編發票與明細，印出退貨／折讓憑證，原發票作廢狀態同步上傳。',
+        highlight: ''
+      },
+      {
+        seq: '025',
+        type: '退貨',
+        cats: ['REFUND_CLOSE'],
+        scenario: '退掉序 003（應稅＋統編＋刷卡 700 ＋ 專商禮券 300）',
+        expected: '發票作廢金額 700 元，刷卡退刷 700 元、專商禮券退回 300 元，支付拆分沖銷正確。',
+        highlight: ''
+      },
+      {
+        seq: '026',
+        type: '退貨',
+        cats: ['REFUND_CLOSE'],
+        scenario: '退掉序 006（外交官零稅率＋刷卡 700 ＋ 專商禮券 300）',
+        expected: '零稅率發票 700 元作廢，刷卡與專商禮券分別退回，稅額 0 沖銷無誤。',
+        highlight: ''
+      },
+      {
+        seq: '027',
+        type: '退貨',
+        cats: ['REFUND_CLOSE'],
+        scenario: '退掉序 009（免稅＋有統編發票）',
+        expected: '免稅有統編發票作廢，免稅銷售額 1000 沖銷正確。',
+        highlight: ''
+      },
+      {
+        seq: '028',
+        type: '退貨',
+        cats: ['REFUND_CLOSE'],
+        scenario: '退掉序 014（免稅＋外交官＋全額專商禮券 1000 元未開發票交易）',
+        expected: '因原交易未開發票，退貨時「不應產生發票作廢」，僅退回專商禮券 1000 元並印出退貨明細。',
+        highlight: 'voucher'
+      },
+      {
+        seq: '029',
+        type: '日結清機',
+        cats: ['REFUND_CLOSE'],
+        scenario: '結帳，清機條確認（核對所有測試交易彙總）',
+        expected: '清機條之「應稅、免稅、零稅率、已開專商禮券（不計入發票開立總額）、作廢張數／金額」與實體單據完全吻合。',
+        highlight: ''
+      },
+      {
+        seq: '030',
+        type: '上傳核對',
+        cats: ['REFUND_CLOSE'],
+        scenario: 'POS 後台與財政部大平台電子發票上傳狀態檢核',
+        expected: '確認未開發票交易（004、007、011、014）無異常上傳；外交官＋統編（015）稅別與買方統編上傳無誤。',
+        highlight: ''
+      }
+    ];
 
-    // 開啟正式簽核檢核表
-    function openSignoffModal() {
-      const now = new Date();
-      const ts = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      document.getElementById('report-timestamp').textContent = ts;
+    // 儲存使用者勾選與輸入狀態
+    const caseState = {};
+    testCasesData.forEach(item => {
+      caseState[item.seq] = { checked: false, note: '' };
+    });
 
-      const labels = document.querySelectorAll('#main-workspace label.flex');
-      const tbody = document.getElementById('report-table-body');
-      tbody.innerHTML = Array.from(labels).map((lbl, idx) => {
-        // 取得標題純文字（排除紅色圓形數字徽章）
-        const titleDiv = lbl.querySelector('.font-semibold');
-        const clone = titleDiv.cloneNode(true);
-        const badge = clone.querySelector('span');
-        if (badge) badge.remove();
-        const titleText = clone.textContent.trim();
+    let activeCaseFilter = 'ALL';
+
+    function renderTestCases() {
+      const tbody = document.getElementById('test-cases-tbody');
+      if (!tbody) return;
+
+      const filtered = testCasesData.filter(item => {
+        if (activeCaseFilter === 'ALL') return true;
+        return item.cats.includes(activeCaseFilter);
+      });
+
+      tbody.innerHTML = filtered.map(item => {
+        const state = caseState[item.seq] || { checked: false, note: '' };
+
+        // 宣告類型徽章樣式
+        let typeBadgeClass = 'bg-slate-100 text-slate-700 border-slate-200';
+        if (item.type.includes('外交官＋統編')) {
+          typeBadgeClass = 'bg-indigo-100 text-indigo-800 border-indigo-300 font-bold';
+        } else if (item.type.includes('統編')) {
+          typeBadgeClass = 'bg-amber-100 text-amber-800 border-amber-300 font-semibold';
+        } else if (item.type.includes('外交官')) {
+          typeBadgeClass = 'bg-sky-100 text-sky-800 border-sky-300 font-semibold';
+        } else if (item.type.includes('退貨')) {
+          typeBadgeClass = 'bg-rose-100 text-rose-800 border-rose-200 font-semibold';
+        } else if (item.type.includes('卡控')) {
+          typeBadgeClass = 'bg-purple-100 text-purple-800 border-purple-200 font-semibold';
+        }
+
+        // 強調重點標籤
+        let rowBg = state.checked ? 'bg-emerald-50/60' : 'hover:bg-slate-50';
+        if (!state.checked && item.highlight === 'zero_taxid') rowBg = 'bg-indigo-50/40 hover:bg-indigo-50/80';
+        if (!state.checked && item.highlight === 'voucher') rowBg = 'bg-rose-50/40 hover:bg-rose-50/80';
+
+        // 格式化多行文字並凸顯紅字/關鍵提示
+        const formatLines = (text) => {
+          return text.split('\n').map(line => {
+            if (line.includes('【必測】') || line.includes('【實體出紙必檢】') || line.includes('【新增交叉驗證】')) {
+              return `<div class="text-rose-700 font-bold mt-0.5">${line}</div>`;
+            }
+            return `<div>${line}</div>`;
+          }).join('');
+        };
 
         return `
-          <tr>
-            <td class="border border-slate-400 px-2.5 py-1.5 text-center mono font-bold">${idx + 1}</td>
-            <td class="border border-slate-400 px-3 py-1.5 text-slate-800">${titleText}</td>
-            <td class="border border-slate-400 px-2.5 py-1.5 text-center font-bold text-emerald-700">☑ 通過</td>
+          <tr class="${rowBg} transition">
+            <td class="py-3 px-3 text-center align-top">
+              <input type="checkbox" ${state.checked ? 'checked' : ''} onchange="toggleCaseCheck('${item.seq}', this.checked)" class="w-4 h-4 mt-0.5 rounded text-emerald-600 focus:ring-emerald-500 cursor-pointer" />
+            </td>
+            <td class="py-3 px-3 text-center align-top mono font-bold text-slate-700">${item.seq}</td>
+            <td class="py-3 px-3 align-top">
+              <span class="inline-block px-2 py-0.5 rounded-md border text-[11px] ${typeBadgeClass}">
+                ${item.type}
+              </span>
+            </td>
+            <td class="py-3 px-3 align-top text-slate-800 leading-relaxed">
+              ${formatLines(item.scenario)}
+            </td>
+            <td class="py-3 px-3 align-top text-slate-600 leading-relaxed">
+              ${formatLines(item.expected)}
+            </td>
+            <td class="py-3 px-3 align-top">
+              <input type="text" value="${state.note.replace(/"/g, '&quot;')}" oninput="updateCaseNote('${item.seq}', this.value)" placeholder="填發票號碼 / 異常註記" class="w-full px-2 py-1.5 text-xs mono bg-white border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+            </td>
           </tr>
         `;
       }).join('');
+    }
 
-      document.getElementById('signoff-modal').classList.remove('hidden');
+    function filterCases(catKey) {
+      activeCaseFilter = catKey;
+      const btns = document.querySelectorAll('.case-filter-btn');
+      btns.forEach(btn => {
+        const key = btn.getAttribute('data-filter');
+        if (key === catKey) {
+          btn.className = 'case-filter-btn px-3 py-1.5 rounded-lg text-xs font-bold bg-slate-900 text-white shadow-xs transition';
+        } else if (key === 'ZERO_TAXID') {
+          btn.className = 'case-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 transition';
+        } else if (key === 'VOUCHER_NO_INV') {
+          btn.className = 'case-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition';
+        } else {
+          btn.className = 'case-filter-btn px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 hover:bg-slate-200 transition';
+        }
+      });
+      renderTestCases();
+    }
+
+    function toggleCaseCheck(seq, isChecked) {
+      if (caseState[seq]) {
+        caseState[seq].checked = isChecked;
+      }
+      updateCasesProgress();
+      renderTestCases();
+    }
+
+    function updateCaseNote(seq, val) {
+      if (caseState[seq]) {
+        caseState[seq].note = val;
+      }
+    }
+
+    function updateCasesProgress() {
+      const total = testCasesData.length;
+      let checked = 0;
+      Object.values(caseState).forEach(st => {
+        if (st.checked) checked++;
+      });
+      const pct = Math.round((checked / total) * 100);
+
+      const bar = document.getElementById('cases-progress-bar');
+      const txt = document.getElementById('cases-progress-text');
+      const badge = document.getElementById('tab-badge-cases');
+      if (bar) bar.style.width = `${pct}%`;
+      if (txt) txt.textContent = `${checked} / ${total} (${pct}%)`;
+      if (badge) badge.textContent = `${checked}/${total}`;
+    }
+
+    // 重置目前所在頁籤的勾選狀態
+    function resetCurrentTab() {
+      if (currentTab === 'visual') {
+        document.querySelectorAll('#tab-panel-visual .chk-item').forEach(cb => cb.checked = false);
+        updateProgress();
+      } else {
+        Object.keys(caseState).forEach(seq => {
+          caseState[seq].checked = false;
+          caseState[seq].note = '';
+        });
+        updateCasesProgress();
+        renderTestCases();
+      }
+    }
+
+    // =========================================================================
+    // 4. 匯出 Excel (.csv) 功能（含 UTF-8 BOM 確保 Excel 開啟中文不亂碼）
+    // =========================================================================
+    function exportCasesToCSV() {
+      const headers = ['執行狀態', '序號', '宣告類型', '測試CASE情境', '預期結果與檢核重點', '實測發票號碼/備註'];
+      const escapeCSV = (str) => {
+        const clean = String(str || '').replace(/\r?\n/g, ' / ');
+        return `"${clean.replace(/"/g, '""')}"`;
+      };
+
+      const rows = testCasesData.map(item => {
+        const st = caseState[item.seq] || { checked: false, note: '' };
+        return [
+          escapeCSV(st.checked ? '已完成' : '未完成'),
+          escapeCSV(item.seq),
+          escapeCSV(item.type),
+          escapeCSV(item.scenario),
+          escapeCSV(item.expected),
+          escapeCSV(st.note)
+        ].join(',');
+      });
+
+      const csvContent = '\uFEFF' + [headers.map(escapeCSV).join(','), ...rows].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+
+      const now = new Date();
+      const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `POS更版交易測試執行表_${dateStr}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // =========================================================================
+    // 5. 正式可列印簽核單 Modal（支援「12 項基本檢核」與「30 項測試交易」雙模式）
+    // =========================================================================
+    function openSignoffModal(sourceType) {
+      const now = new Date();
+      const ts = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, '0')}/${String(now.getDate()).padStart(2, '0')} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      const tsEl = document.getElementById('report-timestamp');
+      if (tsEl) tsEl.textContent = ts;
+
+      const mainTitle = document.getElementById('report-main-title');
+      const thead = document.getElementById('report-table-head');
+      const tbody = document.getElementById('report-table-body');
+      if (!tbody || !thead) return;
+
+      if (sourceType === 'cases') {
+        if (mainTitle) mainTitle.textContent = 'POS 程式更版 — 30 項交易測試執行簽核表';
+        thead.innerHTML = `
+          <th class="border border-slate-400 px-2 py-2 w-14 text-center">序號</th>
+          <th class="border border-slate-400 px-2 py-2 w-24 text-center">宣告類型</th>
+          <th class="border border-slate-400 px-2.5 py-2 text-left">測試 CASE 情境</th>
+          <th class="border border-slate-400 px-2.5 py-2 w-36 text-left">實測發票/備註</th>
+          <th class="border border-slate-400 px-2 py-2 w-20 text-center">執行結果</th>
+        `;
+        tbody.innerHTML = testCasesData.map(item => {
+          const st = caseState[item.seq] || { checked: false, note: '' };
+          const firstLine = item.scenario.split('\n')[0];
+          const secondLine = item.scenario.split('\n')[1] || '';
+          return `
+            <tr>
+              <td class="border border-slate-400 px-2 py-1.5 text-center mono font-bold">${item.seq}</td>
+              <td class="border border-slate-400 px-2 py-1.5 text-center font-semibold">${item.type}</td>
+              <td class="border border-slate-400 px-2.5 py-1.5 text-slate-800">
+                <div class="font-semibold">${firstLine}</div>
+                <div class="text-[11px] text-slate-600">${secondLine}</div>
+              </td>
+              <td class="border border-slate-400 px-2 py-1.5 mono text-[11px] text-slate-700">${st.note || ''}</td>
+              <td class="border border-slate-400 px-2 py-1.5 text-center font-bold ${st.checked ? 'text-emerald-700' : 'text-slate-500'}">
+                ${st.checked ? '☑ 通過' : '☐ 待測'}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      } else {
+        if (mainTitle) mainTitle.textContent = 'POS 程式更版 — 發票格式與數字人工檢核表';
+        thead.innerHTML = `
+          <th class="border border-slate-400 px-2.5 py-2 w-12 text-center">項次</th>
+          <th class="border border-slate-400 px-3 py-2 text-left">查核項目內容</th>
+          <th class="border border-slate-400 px-2.5 py-2 w-24 text-center">查核結果</th>
+        `;
+        const labels = document.querySelectorAll('#tab-panel-visual label.flex');
+        tbody.innerHTML = Array.from(labels).map((lbl, idx) => {
+          const titleDiv = lbl.querySelector('.font-semibold');
+          const clone = titleDiv.cloneNode(true);
+          const badge = clone.querySelector('span');
+          if (badge) badge.remove();
+          const titleText = clone.textContent.trim();
+          const isChecked = lbl.querySelector('input[type="checkbox"]')?.checked;
+
+          return `
+            <tr>
+              <td class="border border-slate-400 px-2.5 py-1.5 text-center mono font-bold">${idx + 1}</td>
+              <td class="border border-slate-400 px-3 py-1.5 text-slate-800">${titleText}</td>
+              <td class="border border-slate-400 px-2.5 py-1.5 text-center font-bold ${isChecked ? 'text-emerald-700' : 'text-slate-500'}">
+                ${isChecked ? '☑ 通過' : '☐ 待測'}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      const modal = document.getElementById('signoff-modal');
+      if (modal) modal.classList.remove('hidden');
     }
 
     function closeSignoffModal() {
-      document.getElementById('signoff-modal').classList.add('hidden');
+      const modal = document.getElementById('signoff-modal');
+      if (modal) modal.classList.add('hidden');
       document.body.classList.remove('printing-report');
     }
 
@@ -808,11 +1449,13 @@
       }, 500);
     }
 
-    // 初始化
+    // 初始化所有元件
     window.addEventListener('DOMContentLoaded', () => {
       setMode('b2c');
       calcTax();
       updateProgress();
+      renderTestCases();
+      updateCasesProgress();
     });
   </script>
 </body>
